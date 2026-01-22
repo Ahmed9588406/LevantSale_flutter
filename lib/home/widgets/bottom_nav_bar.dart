@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../verification/verification_step_one_screen.dart';
 import '../../myAds/my_ads_screen.dart';
 import '../../createAdd/step1.dart';
 import '../../messages/messages_list_screen.dart';
+import '../../profile/profile_screen.dart';
+import '../../verification/verification_status_screen.dart';
+import '../../verification/verification_step_one_screen.dart';
+import '../../profile/profile_service.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -16,7 +19,10 @@ class CustomBottomNavBar extends StatelessWidget {
   }) : super(key: key);
 
   // Context-aware SVG loader: check asset existence and show fallback icon if missing.
-  static Future<bool> _assetExists(BuildContext context, String assetPath) async {
+  static Future<bool> _assetExists(
+    BuildContext context,
+    String assetPath,
+  ) async {
     try {
       await DefaultAssetBundle.of(context).load(assetPath);
       return true;
@@ -39,7 +45,11 @@ class CustomBottomNavBar extends StatelessWidget {
       builder: (ctx, snapshot) {
         final icon = Icon(fallback, size: width, color: color);
         if (snapshot.connectionState != ConnectionState.done) {
-          return SizedBox(width: width, height: height, child: Center(child: icon));
+          return SizedBox(
+            width: width,
+            height: height,
+            child: Center(child: icon),
+          );
         }
         if (snapshot.hasData && snapshot.data == true) {
           return SvgPicture.asset(
@@ -79,69 +89,107 @@ class CustomBottomNavBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(child: _buildNavItem(
-                icon: const Icon(Icons.person_outline),
-                label: 'توثيق',
-                index: 4,
-                onCustomTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const VerificationStepOneScreen(),
-                    ),
-                  );
-                },
-              )),
-              Flexible(child: _buildNavItem(
-                icon: const Icon(Icons.view_headline),
-                label: 'إعلاناتي',
-                index: 3,
-                onCustomTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyAdsScreen(),
-                    ),
-                  );
-                },
-              )),
+              Flexible(
+                child: _buildNavItem(
+                  icon: const Icon(Icons.verified_user_outlined),
+                  label: 'توثيق',
+                  index: 5,
+                  onCustomTap: () {
+                    () async {
+                      final status =
+                          await ProfileService.fetchVerificationStatus();
+                      if (status == null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const VerificationStepOneScreen(),
+                          ),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const VerificationStatusScreen(),
+                          ),
+                        );
+                      }
+                    }();
+                  },
+                ),
+              ),
+              Flexible(
+                child: _buildNavItem(
+                  icon: const Icon(Icons.person_outline),
+                  label: 'حسابي',
+                  index: 4,
+                  onCustomTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Flexible(
+                child: _buildNavItem(
+                  icon: const Icon(Icons.view_headline),
+                  label: 'إعلاناتي',
+                  index: 3,
+                  onCustomTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyAdsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
               const SizedBox(width: 60), // Space for center FAB
-              Flexible(child: _buildNavItem(
-                icon: _svgIcon(
-                  context,
-                  'icons/message.svg',
-                  color: currentIndex == 1
-                      ? const Color(0xFF1DAF52)
-                      : const Color(0xFF9E9E9E),
-                  width: 22,
-                  height: 22,
-                  fallback: Icons.chat_bubble_outline,
-                ),
-                label: 'رسائل',
-                index: 1,
-                onCustomTap: () {
-                  Navigator.push(
+              Flexible(
+                child: _buildNavItem(
+                  icon: _svgIcon(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const MessagesListScreen(),
-                    ),
-                  );
-                },
-              )),
-              Flexible(child: _buildNavItem(
-                icon: _svgIcon(
-                  context,
-                  'icons/home.svg',
-                  color: currentIndex == 0
-                      ? const Color(0xFF1DAF52)
-                      : const Color(0xFF9E9E9E),
-                  width: 22,
-                  height: 22,
-                  fallback: Icons.home_outlined,
+                    'icons/message.svg',
+                    color: currentIndex == 1
+                        ? const Color(0xFF1DAF52)
+                        : const Color(0xFF9E9E9E),
+                    width: 22,
+                    height: 22,
+                    fallback: Icons.chat_bubble_outline,
+                  ),
+                  label: 'رسائل',
+                  index: 1,
+                  onCustomTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MessagesListScreen(),
+                      ),
+                    );
+                  },
                 ),
-                label: 'الرئيسية',
-                index: 0,
-              )),
+              ),
+              Flexible(
+                child: _buildNavItem(
+                  icon: _svgIcon(
+                    context,
+                    'icons/home.svg',
+                    color: currentIndex == 0
+                        ? const Color(0xFF1DAF52)
+                        : const Color(0xFF9E9E9E),
+                    width: 22,
+                    height: 22,
+                    fallback: Icons.home_outlined,
+                  ),
+                  label: 'الرئيسية',
+                  index: 0,
+                ),
+              ),
             ],
           ),
 

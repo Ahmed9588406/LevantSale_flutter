@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../api/auth/auth_service.dart';
 import 'email_login_screen.dart';
 import 'otp_verification_screen.dart';
+import '../notifications/notifications_service.dart';
 
 class EmailSignupScreen extends StatefulWidget {
   const EmailSignupScreen({Key? key}) : super(key: key);
@@ -92,6 +93,12 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
       if (!mounted) return;
 
       if (result['success']) {
+        // Initialize notifications and send FCM token to backend
+        try {
+          await NotificationsService.initialize();
+          await NotificationsService.sendFcmTokenToBackend();
+        } catch (_) {}
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -118,10 +125,8 @@ class _EmailSignupScreenState extends State<EmailSignupScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => OtpVerificationScreen(
-                email: email,
-                isPasswordReset: false,
-              ),
+              builder: (context) =>
+                  OtpVerificationScreen(email: email, isPasswordReset: false),
             ),
           );
         });

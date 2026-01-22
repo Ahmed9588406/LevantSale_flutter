@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'payment_screen.dart';
+import 'dart:io';
+import 'create_ad_service.dart';
+import 'ad_form_model.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,10 +16,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'بيع سيارتك',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        fontFamily: 'Cairo',
-      ),
+      theme: ThemeData(primarySwatch: Colors.green, fontFamily: 'Cairo'),
       home: const CarSellStep3(),
     );
   }
@@ -37,12 +37,17 @@ class _CarSellStep3State extends State<CarSellStep3> {
   final TextEditingController priceController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
-  
+
   // Payment method
   String paymentMethod = 'cash';
-  
+
   // Contact method
   String contactMethod = 'phone';
+
+  // Backend integration
+  bool _submitting = false;
+  String? editingId;
+  final List<File> _images = <File>[];
 
   @override
   void dispose() {
@@ -53,6 +58,141 @@ class _CarSellStep3State extends State<CarSellStep3> {
     nameController.dispose();
     phoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _publish() async {
+    if (_submitting) return;
+    final title = adTitleController.text.trim();
+    final desc = descriptionController.text.trim();
+    final loc = locationController.text.trim();
+    final priceStr = priceController.text.trim();
+    final phone = phoneController.text.trim();
+
+    if (title.isEmpty ||
+        desc.isEmpty ||
+        loc.isEmpty ||
+        priceStr.isEmpty ||
+        phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يرجى تعبئة جميع الحقول المطلوبة')),
+      );
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+    });
+
+    try {
+      // Determine category: use a default subcategory (like web uses selected subcategory)
+      final chosenSubcat = AdFormDraft.instance.selectedSubcategoryId;
+      final subcatId =
+          chosenSubcat ?? await CreateAdService.getDefaultSubcategoryId();
+      if (subcatId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تحديد الفئة، حاول لاحقاً')),
+        );
+        return;
+      }
+
+      final data = <String, dynamic>{
+        'title': title,
+        'description': desc,
+        'categoryId': subcatId,
+        'price': double.tryParse(priceStr) ?? 0,
+        'currency': 'EGP',
+        'location': loc,
+        'phone': phone,
+        'condition': 'USED',
+        'attributes': <Map<String, dynamic>>[],
+      };
+
+      // Map dynamic attributes from draft to backend schema
+      final attrsMap = AdFormDraft.instance.attributes;
+      if (attrsMap.isNotEmpty) {
+        final List<Map<String, dynamic>> attrsList = [];
+        attrsMap.forEach((attrId, value) {
+          if (value == null) return;
+          if (value is String && value.trim().isEmpty) return;
+          if (value is List && value.isEmpty) return;
+
+          if (value is bool) {
+            attrsList.add({'attributeId': attrId, 'valueBoolean': value});
+          } else if (value is num) {
+            attrsList.add({
+              'attributeId': attrId,
+              'valueNumber': value,
+              'valueString': value.toString(),
+            });
+          } else if (value is List) {
+            attrsList.add({
+              'attributeId': attrId,
+              'valueString': value.map((e) => e.toString()).join(', '),
+            });
+          } else {
+            // Try to parse numeric string
+            final parsed = double.tryParse(value.toString());
+            if (parsed != null) {
+              attrsList.add({
+                'attributeId': attrId,
+                'valueNumber': parsed,
+                'valueString': value.toString(),
+              });
+            } else {
+              attrsList.add({
+                'attributeId': attrId,
+                'valueString': value.toString(),
+              });
+            }
+          }
+        });
+        data['attributes'] = attrsList;
+      }
+
+      // Try to capture editing id from route if provided
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map && args['id'] is String) {
+        editingId = args['id'] as String;
+      } else if (args is String) {
+        editingId = args;
+      }
+
+      final resp = editingId == null
+          ? await CreateAdService.createListing(data: data, images: _images)
+          : await CreateAdService.updateListing(
+              id: editingId!,
+              data: data,
+              images: _images,
+            );
+
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              editingId == null
+                  ? 'تم نشر الإعلان بنجاح'
+                  : 'تم تحديث الإعلان بنجاح',
+            ),
+          ),
+        );
+        if (mounted) Navigator.pop(context);
+      } else {
+        final body = resp.body;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل العملية (${resp.statusCode}): $body')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطأ في الاتصال: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -79,10 +219,7 @@ class _CarSellStep3State extends State<CarSellStep3> {
           ),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(
-              color: Colors.grey[200],
-              height: 1,
-            ),
+            child: Container(color: Colors.grey[200], height: 1),
           ),
         ),
         body: Column(
@@ -116,15 +253,12 @@ class _CarSellStep3State extends State<CarSellStep3> {
                   const SizedBox(height: 4),
                   Text(
                     'تفاصيل الإعلان والسعر وبيانات التواصل',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
                 ],
               ),
             ),
-            
+
             // Form Content
             Expanded(
               child: SingleChildScrollView(
@@ -143,14 +277,11 @@ class _CarSellStep3State extends State<CarSellStep3> {
                     const SizedBox(height: 4),
                     Text(
                       'يجب أن تحتوي خانة العنوان على ما لا يقل عن 5 أحرف لنجاحة.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // الوصف (Description)
                     _buildLabel('الوصف'),
                     const SizedBox(height: 8),
@@ -162,21 +293,18 @@ class _CarSellStep3State extends State<CarSellStep3> {
                     const SizedBox(height: 4),
                     Text(
                       'يجب أن تحتوي خانة الوصف على ما لا يقل عن 10 أحرف لنجاحة.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // الموقع (Location)
                     _buildLabel('الموقع'),
                     const SizedBox(height: 8),
                     _buildSearchField(locationController, 'إختر الموقع'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // طريقة الدفع (Payment Method)
                     _buildLabel('طريقة الدفع'),
                     const SizedBox(height: 8),
@@ -207,30 +335,30 @@ class _CarSellStep3State extends State<CarSellStep3> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // السعر (Price)
                     _buildLabel('السعر'),
                     const SizedBox(height: 8),
                     _buildInputField(priceController, 'إختر تكييف'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // الاسم (Name)
                     _buildLabel('الاسم'),
                     const SizedBox(height: 8),
                     _buildInputField(nameController, 'محمد عبودي'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // رقم الهاتف المحمول (Mobile Number)
                     _buildLabel('رقم الهاتف المحمول'),
                     const SizedBox(height: 8),
                     _buildInputField(phoneController, '+964'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // طريقة التواصل (Contact Method)
                     _buildLabel('طريقة التواصل'),
                     const SizedBox(height: 8),
@@ -261,13 +389,13 @@ class _CarSellStep3State extends State<CarSellStep3> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 32),
                   ],
                 ),
               ),
             ),
-            
+
             // Bottom Buttons
             Container(
               padding: const EdgeInsets.all(16),
@@ -311,9 +439,7 @@ class _CarSellStep3State extends State<CarSellStep3> {
                       child: SizedBox(
                         height: 50,
                         child: OutlinedButton(
-                          onPressed: () {
-                            // Publish ad
-                          },
+                          onPressed: _submitting ? null : _publish,
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(
                               color: Color(0xFF00A651),
@@ -402,12 +528,12 @@ class _CarSellStep3State extends State<CarSellStep3> {
         maxLines: maxLines,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 16,
-          ),
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 16),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -425,16 +551,13 @@ class _CarSellStep3State extends State<CarSellStep3> {
         textAlign: TextAlign.right,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 16,
-          ),
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 16),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          suffixIcon: Icon(
-            Icons.search,
-            color: Colors.grey[400],
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
           ),
+          suffixIcon: Icon(Icons.search, color: Colors.grey[400]),
         ),
       ),
     );

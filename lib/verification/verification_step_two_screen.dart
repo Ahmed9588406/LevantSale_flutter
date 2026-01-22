@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:io';
 import 'verification_step_three_screen.dart';
 import 'image_picker_helper.dart';
+import 'verification_draft.dart';
 
 class VerificationStepTwoScreen extends StatefulWidget {
   const VerificationStepTwoScreen({Key? key}) : super(key: key);
@@ -28,6 +29,14 @@ class _VerificationStepTwoScreenState extends State<VerificationStepTwoScreen> {
           print('Back image selected: ${image.path}');
         }
       });
+
+      // Persist to draft
+      final draft = VerificationDraft.instance;
+      if (isFront) {
+        draft.nationalIdFront = image;
+      } else {
+        draft.nationalIdBack = image;
+      }
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(

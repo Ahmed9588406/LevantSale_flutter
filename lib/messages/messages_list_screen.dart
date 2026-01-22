@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/message_model.dart';
 import 'chat_screen.dart';
+import 'chat_service.dart';
 
 class MessagesListScreen extends StatefulWidget {
   const MessagesListScreen({Key? key}) : super(key: key);
@@ -11,26 +12,55 @@ class MessagesListScreen extends StatefulWidget {
 
 class _MessagesListScreenState extends State<MessagesListScreen> {
   String selectedFilter = 'الكل';
-  
-  // Sample data
-  final List<ChatConversation> conversations = [
-    ChatConversation(
-      id: '1',
-      userName: 'خالد درويش',
-      userAvatar: '',
-      productTitle: 'موديل MG 7 2026',
-      productPrice: '1,510,000 ج.م',
-      productImage: '',
-      lastMessage: Message(
-        id: '1',
-        text: 'ممكن تفاصيل ؟',
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-        isSentByMe: false,
-      ),
-      unreadCount: 1,
-      isRead: false,
-    ),
-  ];
+  bool _loading = false;
+  List<ChatConversation> conversations = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+  }
+
+  Future<void> _loadConversations() async {
+    setState(() => _loading = true);
+    try {
+      final items = await ChatService.fetchConversations(page: 0, size: 20);
+      final mapped = items.map((c) {
+        final lastTime = _parseTime(c.lastMessageTime);
+        return ChatConversation(
+          id: c.otherUserId,
+          userName: c.otherUserName,
+          userAvatar: '',
+          productTitle: '',
+          productPrice: '',
+          productImage: '',
+          lastMessage: Message(
+            id: 'last',
+            text: c.lastMessageContent ?? '',
+            timestamp: lastTime ?? DateTime.now(),
+            isSentByMe: false,
+            isRead: (c.unreadCount == 0),
+          ),
+          unreadCount: c.unreadCount,
+          isRead: (c.unreadCount == 0),
+        );
+      }).toList();
+      setState(() => conversations = mapped);
+    } catch (_) {
+      // keep empty state on error
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  DateTime? _parseTime(String? ts) {
+    if (ts == null || ts.isEmpty) return null;
+    try {
+      return DateTime.parse(ts);
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +87,11 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
         children: [
           _buildFilterTabs(),
           Expanded(
-            child: conversations.isEmpty
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _filtered().isEmpty
                 ? _buildEmptyState()
-                : _buildConversationsList(),
+                : _buildConversationsList(_filtered()),
           ),
         ],
       ),
@@ -95,7 +127,9 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFE8F5E9) : Colors.white,
           border: Border.all(
-            color: isSelected ? const Color(0xFF4CAF50) : const Color(0xFFE0E0E0),
+            color: isSelected
+                ? const Color(0xFF4CAF50)
+                : const Color(0xFFE0E0E0),
             width: 1,
           ),
           borderRadius: BorderRadius.circular(20),
@@ -103,7 +137,9 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? const Color(0xFF4CAF50) : const Color(0xFF757575),
+            color: isSelected
+                ? const Color(0xFF4CAF50)
+                : const Color(0xFF757575),
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
@@ -173,9 +209,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                   child: Container(
                     width: 30,
                     height: 30,
-                    child: CustomPaint(
-                      painter: SparklesPainter(),
-                    ),
+                    child: CustomPaint(painter: SparklesPainter()),
                   ),
                 ),
               ],
@@ -195,13 +229,27 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
     );
   }
 
-  Widget _buildConversationsList() {
-    return ListView.builder(
-      itemCount: conversations.length,
-      itemBuilder: (context, index) {
-        final conversation = conversations[index];
-        return _buildConversationItem(conversation);
-      },
+  List<ChatConversation> _filtered() {
+    switch (selectedFilter) {
+      case 'مقروء':
+        return conversations.where((c) => c.unreadCount == 0).toList();
+      case 'غير مقروء':
+        return conversations.where((c) => c.unreadCount > 0).toList();
+      default:
+        return conversations;
+    }
+  }
+
+  Widget _buildConversationsList(List<ChatConversation> list) {
+    return RefreshIndicator(
+      onRefresh: _loadConversations,
+      child: ListView.builder(
+        itemCount: list.length,
+        itemBuilder: (context, index) {
+          final conversation = list[index];
+          return _buildConversationItem(conversation);
+        },
+      ),
     );
   }
 
@@ -274,10 +322,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                   const SizedBox(height: 4),
                   Text(
                     conversation.productTitle,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
                     textAlign: TextAlign.right,
                   ),
                   const SizedBox(height: 2),

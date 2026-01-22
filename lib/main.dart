@@ -3,18 +3,23 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding/onboarding_screen.dart';
 import 'sign_in/sign_in_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'notifications/notifications_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   final bool onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
-  
+  // Initialize notifications and register background handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await NotificationsService.initialize();
+
   runApp(MyApp(showOnboarding: !onboardingComplete));
 }
 
 class MyApp extends StatelessWidget {
   final bool showOnboarding;
-  
+
   const MyApp({super.key, required this.showOnboarding});
 
   @override
@@ -24,9 +29,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false, // removed debug indicator/banner
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1DAF52)),
-        textTheme: GoogleFonts.rubikTextTheme(
-          Theme.of(context).textTheme,
-        ),
+        textTheme: GoogleFonts.rubikTextTheme(Theme.of(context).textTheme),
         fontFamily: GoogleFonts.rubik().fontFamily,
       ),
       home: showOnboarding ? const OnboardingScreen() : const SignInScreen(),

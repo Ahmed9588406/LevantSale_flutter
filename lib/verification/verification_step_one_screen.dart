@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'verification_step_two_screen.dart';
+import 'verification_draft.dart';
 
 class VerificationStepOneScreen extends StatefulWidget {
   const VerificationStepOneScreen({Key? key}) : super(key: key);
@@ -44,7 +45,7 @@ class _VerificationStepOneScreenState extends State<VerificationStepOneScreen> {
                 ),
               ),
             ),
-            
+
             // Main content
             Column(
               children: [
@@ -165,6 +166,14 @@ class _VerificationStepOneScreenState extends State<VerificationStepOneScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 if (_formKey.currentState!.validate()) {
+                                  // Save to draft
+                                  final draft = VerificationDraft.instance;
+                                  draft.fullName = _nameController.text.trim();
+                                  draft.aboutYou = _descriptionController.text
+                                      .trim();
+                                  draft.gender = _selectedGender == 'رجل'
+                                      ? 'MALE'
+                                      : 'FEMALE';
                                   // Navigate to step two
                                   Navigator.push(
                                     context,
@@ -255,10 +264,7 @@ class _VerificationStepOneScreenState extends State<VerificationStepOneScreen> {
       readOnly: readOnly,
       onTap: onTap,
       textAlign: TextAlign.right,
-      style: const TextStyle(
-        fontSize: 16,
-        color: Color(0xFF212121),
-      ),
+      style: const TextStyle(fontSize: 16, color: Color(0xFF212121)),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(
@@ -277,10 +283,7 @@ class _VerificationStepOneScreenState extends State<VerificationStepOneScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF1DAF52),
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Color(0xFF1DAF52), width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -315,20 +318,14 @@ class _VerificationStepOneScreenState extends State<VerificationStepOneScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Color(0xFF1DAF52),
-              width: 1.5,
-            ),
+            borderSide: const BorderSide(color: Color(0xFF1DAF52), width: 1.5),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
           ),
         ),
-        icon: const Icon(
-          Icons.keyboard_arrow_down,
-          color: Color(0xFF9E9E9E),
-        ),
+        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF9E9E9E)),
         isExpanded: true,
         alignment: Alignment.centerRight,
         items: ['رجل', 'امرأة'].map((String value) {
