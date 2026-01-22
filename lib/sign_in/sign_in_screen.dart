@@ -227,30 +227,23 @@ class _SignInScreenState extends State<SignInScreen> {
                     // Google button
                     _socialButton(
                       label: 'تسجيل الدخول باستخدام جوجل',
-                      icon: Image.asset(
-                        'assets/google_icon.png',
+                      icon: Container(
                         width: 24,
                         height: 24,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.grey.shade300),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'G',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4285F4),
                             ),
-                            child: const Center(
-                              child: Text(
-                                'G',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF4285F4),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
                       onTap: () {},
                     ),

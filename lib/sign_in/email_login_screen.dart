@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'email_signup_screen.dart';
 import 'forgot_password_screen.dart';
+import '../home/home_screen.dart';
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({Key? key}) : super(key: key);
@@ -206,7 +207,15 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                // Navigate to home screen
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const HomeScreen(),
+                                  ),
+                                );
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1DAF52),
                                 shape: RoundedRectangleBorder(

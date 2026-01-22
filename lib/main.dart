@@ -1,27 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'onboarding/onboarding_screen.dart';
 import 'sign_in/sign_in_screen.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final bool onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+  
+  runApp(MyApp(showOnboarding: !onboardingComplete));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool showOnboarding;
+  
+  const MyApp({super.key, required this.showOnboarding});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Leventsale',
+      debugShowCheckedModeBanner: false, // removed debug indicator/banner
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1DAF52)),
         textTheme: GoogleFonts.rubikTextTheme(
           Theme.of(context).textTheme,
         ),
         fontFamily: GoogleFonts.rubik().fontFamily,
       ),
-      home: const SignInScreen(),
+      home: showOnboarding ? const OnboardingScreen() : const SignInScreen(),
     );
   }
 }

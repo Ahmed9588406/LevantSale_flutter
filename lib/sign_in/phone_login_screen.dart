@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../home/home_screen.dart';
 
 class PhoneLoginScreen extends StatefulWidget {
   const PhoneLoginScreen({Key? key}) : super(key: key);
@@ -189,7 +190,15 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                // Navigate to home screen
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const HomeScreen(),
+                                  ),
+                                );
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1DAF52),
                                 shape: RoundedRectangleBorder(
