@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>نحتاج إلى الوصول إلى الكاميرا لالتقاط صور التوثيق</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>نحتاج إلى الوصول إلى معرض الصور لاختيار صور التوثيق</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>نحتاج إلى الوصول إلى الميكروفون لتسجيل الفيديو</string>
 </dict>
 </plist>
