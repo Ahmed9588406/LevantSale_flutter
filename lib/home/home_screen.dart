@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import '../home/widgets/search_bar_widget.dart';
 import '../home/widgets/banner_carousel.dart';
 import '../home/widgets/category_section.dart';
-import '../home/widgets/cars_section.dart';
-import '../home/widgets/properties_section.dart';
 import '../home/widgets/bottom_nav_bar.dart';
+import '../home/widgets/product_sections.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -29,35 +28,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 16),
-                    
+
                     // Search bar and notification
                     const SearchBarWidget(),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Banner carousel
                     const BannerCarousel(),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Categories section
                     const CategorySection(),
-                    
+
                     const SizedBox(height: 24),
-                    
-                    // Cars section
-                    const CarsSection(),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Properties section
-                    const PropertiesSection(),
-                    
+
+                    // Product sections (grouped by category) from API
+                    const ProductSections(),
+
                     const SizedBox(height: 100),
                   ],
                 ),
               ),
-              
+
               // Bottom navigation bar
               Positioned(
                 bottom: 0,

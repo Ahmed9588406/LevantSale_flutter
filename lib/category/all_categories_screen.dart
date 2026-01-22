@@ -1,63 +1,52 @@
 import 'package:flutter/material.dart';
-import 'subcategories_screen.dart';
+import 'package:leventsale/api/home/home_service.dart';
+import 'category_listings_screen.dart';
 
-class AllCategoriesScreen extends StatelessWidget {
+class AllCategoriesScreen extends StatefulWidget {
   const AllCategoriesScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final categories = [
-      {
-        'title': 'للعقارات',
-        'image': 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
-        'subcategories': [
-          'شقق للبيع',
-          'شقق للإيجار',
-          'فلل للبيع',
-          'فلل للإيجار',
-          'عقارات مصيفية للبيع',
-          'عقارات مصيفية للإيجار',
-          'عقارات تجارية للإيجار',
-          'مباني وأراضي',
-        ]
-      },
-      {
-        'title': 'للسيارات',
-        'image': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400',
-        'subcategories': []
-      },
-      {
-        'title': 'أجهزة الكترونية',
-        'image': 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400',
-        'subcategories': []
-      },
-      {
-        'title': 'للخدمة',
-        'image': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400',
-        'subcategories': []
-      },
-      {
-        'title': 'هوايات',
-        'image': 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=400',
-        'subcategories': []
-      },
-      {
-        'title': 'للخدمة',
-        'image': 'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=400',
-        'subcategories': []
-      },
-      {
-        'title': 'موضة',
-        'image': 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400',
-        'subcategories': []
-      },
-      {
-        'title': 'للخدمة',
-        'image': 'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=400',
-        'subcategories': []
-      },
-    ];
+  State<AllCategoriesScreen> createState() => _AllCategoriesScreenState();
+}
 
+class _AllCategoriesScreenState extends State<AllCategoriesScreen> {
+  late Future<List<ApiCategory>> _categoriesFuture;
+  List<ApiCategory> _allCategories = [];
+  List<ApiCategory> _filteredCategories = [];
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _categoriesFuture = HomeService.fetchCategories();
+    _categoriesFuture.then((categories) {
+      setState(() {
+        _allCategories = categories;
+        _filteredCategories = categories;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterCategories(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCategories = _allCategories;
+      } else {
+        _filteredCategories = _allCategories
+            .where((cat) => cat.name.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -91,9 +80,11 @@ class AllCategoriesScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TextField(
+                  controller: _searchController,
                   textAlign: TextAlign.right,
+                  onChanged: _filterCategories,
                   decoration: InputDecoration(
-                    hintText: 'دور على موبايلات، عقارات، سيارات...',
+                    hintText: 'ابحث عن فئة...',
                     hintStyle: const TextStyle(
                       color: Color(0xFF9E9E9E),
                       fontSize: 14,
@@ -113,25 +104,55 @@ class AllCategoriesScreen extends StatelessWidget {
             ),
             // Categories Grid
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.1,
-                ),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  final subcategories = (category['subcategories'] as List)
-                      .map((e) => e.toString())
-                      .toList();
-                  return _buildCategoryCard(
-                    context,
-                    category['title'] as String,
-                    category['image'] as String,
-                    subcategories,
+              child: FutureBuilder<List<ApiCategory>>(
+                future: _categoriesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'حدث خطأ أثناء تحميل الفئات',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _categoriesFuture = HomeService.fetchCategories();
+                              });
+                            },
+                            child: const Text('إعادة المحاولة'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (_filteredCategories.isEmpty) {
+                    return const Center(
+                      child: Text('لا توجد فئات متاحة'),
+                    );
+                  }
+
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.1,
+                    ),
+                    itemCount: _filteredCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = _filteredCategories[index];
+                      return _buildCategoryCard(context, category);
+                    },
                   );
                 },
               ),
@@ -142,25 +163,25 @@ class AllCategoriesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryCard(
-    BuildContext context,
-    String title,
-    String image,
-    List<String> subcategories,
-  ) {
+  Widget _buildCategoryCard(BuildContext context, ApiCategory category) {
+    final raw = category.iconUrl ?? category.imageUrl;
+    String imageUrl = 'https://via.placeholder.com/400x300?text=${Uri.encodeComponent(category.name)}';
+    
+    if (raw != null && raw.isNotEmpty) {
+      imageUrl = raw.startsWith('http') ? raw : '${HomeService.baseUrl}$raw';
+    }
+
     return GestureDetector(
       onTap: () {
-        if (subcategories.isNotEmpty) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SubcategoriesScreen(
-                categoryTitle: title,
-                subcategories: subcategories,
-              ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CategoryListingsScreen(
+              categoryId: category.id,
+              categoryName: category.name,
             ),
-          );
-        }
+          ),
+        );
       },
       child: Container(
         decoration: BoxDecoration(
@@ -179,7 +200,7 @@ class AllCategoriesScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   image: DecorationImage(
-                    image: NetworkImage(image),
+                    image: NetworkImage(imageUrl),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -188,12 +209,15 @@ class AllCategoriesScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                title,
+                category.name,
                 style: const TextStyle(
                   color: Color(0xFF2B2B2A),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

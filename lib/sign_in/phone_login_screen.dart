@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../home/home_screen.dart';
 import '../api/auth/auth_service.dart';
 
@@ -52,6 +53,14 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       if (!mounted) return;
 
       if (result['success']) {
+        try {
+          final data = result['data'] as Map<String, dynamic>?;
+          final token = data?['token']?.toString();
+          if (token != null && token.isNotEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('token', token);
+          }
+        } catch (_) {}
         // Show success toast
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -4,10 +4,8 @@ import 'product_details_screen.dart';
 class SubcategoryItemsScreen extends StatelessWidget {
   final String subcategoryTitle;
 
-  const SubcategoryItemsScreen({
-    Key? key,
-    required this.subcategoryTitle,
-  }) : super(key: key);
+  const SubcategoryItemsScreen({Key? key, required this.subcategoryTitle})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +13,8 @@ class SubcategoryItemsScreen extends StatelessWidget {
     final properties = List.generate(
       8,
       (index) => {
-        'image': 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
+        'image':
+            'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
         'price': '1,520,000',
         'location': 'الشارقة',
         'details': 'جنتور اكس 90 بلس 2026',
@@ -99,13 +98,17 @@ class SubcategoryItemsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPropertyCard(BuildContext context, Map<String, dynamic> property) {
+  Widget _buildPropertyCard(
+    BuildContext context,
+    Map<String, dynamic> property,
+  ) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProductDetailsScreen(product: property),
+            builder: (context) =>
+                ProductDetailsScreen(initialProduct: property),
           ),
         );
       },
