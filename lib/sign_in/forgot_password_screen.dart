@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../api/auth/auth_service.dart';
 import 'email_signup_screen.dart';
 import 'otp_verification_screen.dart';
 
@@ -11,11 +12,104 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSendOtp() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      _showErrorDialog('الرجاء إدخال البريد الإلكتروني');
+      return;
+    }
+
+    if (!_isValidEmail(email)) {
+      _showErrorDialog('الرجاء إدخال بريد إلكتروني صحيح');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await AuthService.requestPasswordReset(email: email);
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'تم إرسال رمز التحقق إلى بريدك الإلكتروني',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            backgroundColor: const Color(0xFF1DAF52),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+
+        // Navigate to OTP screen
+        Future.delayed(const Duration(milliseconds: 500), () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtpVerificationScreen(
+                email: email,
+                isPasswordReset: true,
+              ),
+            ),
+          );
+        });
+      } else {
+        _showErrorDialog(result['message'] ?? 'فشل إرسال رمز التحقق');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('حدث خطأ: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    return emailRegex.hasMatch(email);
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('خطأ'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('حسناً'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -124,26 +218,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: () {
-                                if (_emailController.text.isNotEmpty) {
-                                  // Navigate to OTP screen
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => OtpVerificationScreen(
-                                        email: _emailController.text,
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('الرجاء إدخال البريد الإلكتروني'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              },
+                              onPressed: _isLoading ? null : _handleSendOtp,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1DAF52),
                                 shape: RoundedRectangleBorder(
@@ -151,14 +226,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text(
-                                'إرسال',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'إرسال',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
                           ),
                           
