@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'email_signup_screen.dart';
 import 'forgot_password_screen.dart';
 import '../home/home_screen.dart';
+import '../api/auth/auth_service.dart';
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({Key? key}) : super(key: key);
@@ -14,12 +15,106 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // Validation
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorDialog('الرجاء ملء جميع الحقول');
+      return;
+    }
+
+    if (!_isValidEmail(email)) {
+      _showErrorDialog('الرجاء إدخال بريد إلكتروني صحيح');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await AuthService.loginWithEmail(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        // Show success toast
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'تم تسجيل الدخول بنجاح',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            backgroundColor: const Color(0xFF1DAF52),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+
+        // Navigate to home screen on successful login
+        Future.delayed(const Duration(milliseconds: 500), () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        });
+      } else {
+        _showErrorDialog(result['message'] ?? 'فشل تسجيل الدخول');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('حدث خطأ: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    return emailRegex.hasMatch(email);
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('خطأ'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('حسناً'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -43,7 +138,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 ),
               ),
             ),
-            
+
             SafeArea(
               child: Column(
                 children: [
@@ -53,12 +148,15 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Color(0xFF2B2B2A)),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Color(0xFF2B2B2A),
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),
                   ),
-                  
+
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -66,7 +164,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SizedBox(height: 20),
-                          
+
                           // Title
                           const Text(
                             'تسجيل الدخول بالبريد الإلكتروني',
@@ -76,9 +174,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          
+
                           const SizedBox(height: 60),
-                          
+
                           // Email label
                           const Align(
                             alignment: Alignment.centerRight,
@@ -91,16 +189,19 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 8),
-                          
+
                           // Email input
                           Container(
                             height: 56,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(100),
-                              border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+                              border: Border.all(
+                                color: const Color(0xFFE5E5E5),
+                                width: 1,
+                              ),
                             ),
                             child: TextField(
                               controller: _emailController,
@@ -112,17 +213,18 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                hintText: 'ali.obaidy178@mail.com',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFFB0B0B0),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
                                 ),
+                                hintText: 'ali.obaidy178@mail.com',
+                                hintStyle: TextStyle(color: Color(0xFFB0B0B0)),
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 24),
-                          
+
                           // Password label
                           const Align(
                             alignment: Alignment.centerRight,
@@ -135,16 +237,19 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 8),
-                          
+
                           // Password input
                           Container(
                             height: 56,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(100),
-                              border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+                              border: Border.all(
+                                color: const Color(0xFFE5E5E5),
+                                width: 1,
+                              ),
                             ),
                             child: TextField(
                               controller: _passwordController,
@@ -155,14 +260,19 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                               decoration: InputDecoration(
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
+                                ),
                                 hintText: '••••••',
                                 hintStyle: const TextStyle(
                                   color: Color(0xFFB0B0B0),
                                 ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    _obscurePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
                                     color: const Color(0xFFB0B0B0),
                                   ),
                                   onPressed: () {
@@ -174,9 +284,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 12),
-                          
+
                           // Forgot password
                           Align(
                             alignment: Alignment.centerRight,
@@ -185,7 +295,8 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const ForgotPasswordScreen(),
+                                    builder: (context) =>
+                                        const ForgotPasswordScreen(),
                                   ),
                                 );
                               },
@@ -199,23 +310,15 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 32),
-                          
+
                           // Login button
                           SizedBox(
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Navigate to home screen
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const HomeScreen(),
-                                  ),
-                                );
-                              },
+                              onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1DAF52),
                                 shape: RoundedRectangleBorder(
@@ -223,26 +326,39 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text(
-                                'تسجيل الدخول',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'تسجيل الدخول',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 40),
-                          
+
                           // Sign up text
                           GestureDetector(
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const EmailSignupScreen(),
+                                  builder: (context) =>
+                                      const EmailSignupScreen(),
                                 ),
                               );
                             },
@@ -254,18 +370,14 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                                   color: Color(0xFFC47F08),
                                 ),
                                 children: [
-                                  TextSpan(
-                                    text: 'عضو جديد في ',
-                                  ),
+                                  TextSpan(text: 'عضو جديد في '),
                                   TextSpan(
                                     text: 'leventsale',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  TextSpan(
-                                    text: ' قم بتسجيل الدخول الآن',
-                                  ),
+                                  TextSpan(text: ' قم بتسجيل الدخول الآن'),
                                 ],
                               ),
                             ),

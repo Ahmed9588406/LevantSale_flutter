@@ -1,48 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:async';
+import '../api/auth/auth_service.dart';
+import 'email_login_screen.dart';
+import 'reset_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
-  
-  const OtpVerificationScreen({Key? key, required this.email}) : super(key: key);
+  final bool isPasswordReset;
+
+  const OtpVerificationScreen({
+    Key? key,
+    required this.email,
+    this.isPasswordReset = false,
+  }) : super(key: key);
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _otpControllers =
+      List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
-  int _secondsRemaining = 57;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTimer();
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    setState(() {
-      _secondsRemaining = 57;
-    });
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_secondsRemaining > 0) {
-        setState(() {
-          _secondsRemaining--;
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
+  bool _isLoading = false;
+  bool _isResending = false;
 
   @override
   void dispose() {
-    _timer?.cancel();
-    for (var controller in _controllers) {
+    for (var controller in _otpControllers) {
       controller.dispose();
     }
     for (var node in _focusNodes) {
@@ -51,42 +36,152 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     super.dispose();
   }
 
-  void _onChanged(String value, int index) {
-    if (value.isNotEmpty && index < 5) {
-      _focusNodes[index + 1].requestFocus();
+  String get _otpCode {
+    return _otpControllers.map((c) => c.text).join();
+  }
+
+  Future<void> _handleVerify() async {
+    if (_otpCode.length != 6) {
+      _showErrorDialog('الرجاء إدخال رمز التحقق كاملاً');
+      return;
     }
-    
-    // Check if all fields are filled
-    if (_controllers.every((controller) => controller.text.isNotEmpty)) {
-      // Auto-verify when all digits are entered
-      _verifyOtp();
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = widget.isPasswordReset
+          ? await AuthService.verifyResetOtp(
+              email: widget.email,
+              otp: _otpCode,
+            )
+          : await AuthService.activateAccount(
+              email: widget.email,
+              otp: _otpCode,
+            );
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.isPasswordReset
+                  ? 'تم التحقق بنجاح'
+                  : 'تم تفعيل الحساب بنجاح',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            backgroundColor: const Color(0xFF1DAF52),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (widget.isPasswordReset) {
+            // Navigate to reset password screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ResetPasswordScreen(
+                  email: widget.email,
+                  otp: _otpCode,
+                ),
+              ),
+            );
+          } else {
+            // Navigate to login screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const EmailLoginScreen(),
+              ),
+            );
+          }
+        });
+      } else {
+        _showErrorDialog(result['message'] ?? 'فشل التحقق من الرمز');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('حدث خطأ: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  void _onBackspace(int index) {
-    if (index > 0) {
-      _focusNodes[index - 1].requestFocus();
+  Future<void> _handleResend() async {
+    setState(() {
+      _isResending = true;
+    });
+
+    try {
+      final result = await AuthService.resendOtp(email: widget.email);
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'تم إرسال الرمز بنجاح',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            backgroundColor: const Color(0xFF1DAF52),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      } else {
+        _showErrorDialog(result['message'] ?? 'فشل إرسال الرمز');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('حدث خطأ: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResending = false;
+        });
+      }
     }
   }
 
-  void _verifyOtp() {
-    String otp = _controllers.map((c) => c.text).join();
-    // TODO: Implement OTP verification logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('تم التحقق من الرمز: $otp'),
-        backgroundColor: const Color(0xFF1DAF52),
-      ),
-    );
-  }
-
-  void _resendOtp() {
-    _startTimer();
-    // TODO: Implement resend OTP logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم إعادة إرسال الرمز'),
-        backgroundColor: Color(0xFF1DAF52),
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('خطأ'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('حسناً'),
+          ),
+        ],
       ),
     );
   }
@@ -112,7 +207,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
               ),
             ),
-            
             SafeArea(
               child: Column(
                 children: [
@@ -122,12 +216,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Color(0xFF2B2B2A)),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Color(0xFF2B2B2A),
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),
                   ),
-                  
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -135,86 +231,79 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SizedBox(height: 20),
-                          
                           // Title
                           const Text(
-                            'أدخل رمز التأكيد',
+                            'التحقق من الرمز',
                             style: TextStyle(
                               color: Color(0xFF2B2B2A),
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          
-                          const SizedBox(height: 24),
-                          
+                          const SizedBox(height: 16),
                           // Subtitle
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Text(
-                              'أدخل الرمز المكون من 4 أرقام الذي تم إرساله عبر\n${widget.email}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF6B6B6B),
-                                fontSize: 14,
-                                height: 1.5,
-                              ),
+                          Text(
+                            'تم إرسال رمز التحقق إلى\n${widget.email}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF6B6B6B),
+                              fontSize: 14,
+                              height: 1.5,
                             ),
                           ),
-                          
-                          const SizedBox(height: 40),
-                          
+                          const SizedBox(height: 60),
                           // OTP Input Fields
                           Directionality(
                             textDirection: TextDirection.ltr,
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: List.generate(6, (index) {
-                                return Container(
-                                  width: 46,
+                                return SizedBox(
+                                  width: 50,
                                   height: 56,
-                                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: _controllers[index].text.isNotEmpty
-                                          ? const Color(0xFFC47F08)
-                                          : const Color(0xFFE5E5E5),
-                                      width: _controllers[index].text.isNotEmpty ? 2 : 1,
-                                    ),
-                                  ),
                                   child: TextField(
-                                    controller: _controllers[index],
+                                    controller: _otpControllers[index],
                                     focusNode: _focusNodes[index],
                                     textAlign: TextAlign.center,
                                     keyboardType: TextInputType.number,
                                     maxLength: 1,
                                     style: const TextStyle(
                                       fontSize: 24,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.bold,
                                       color: Color(0xFF2B2B2A),
                                     ),
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
+                                    decoration: InputDecoration(
                                       counterText: '',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFE5E5E5),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFE5E5E5),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF1DAF52),
+                                          width: 2,
+                                        ),
+                                      ),
                                     ),
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly,
                                     ],
                                     onChanged: (value) {
-                                      setState(() {
-                                        _onChanged(value, index);
-                                      });
-                                    },
-                                    onTap: () {
-                                      _controllers[index].selection = TextSelection.fromPosition(
-                                        TextPosition(offset: _controllers[index].text.length),
-                                      );
-                                    },
-                                    onEditingComplete: () {
-                                      if (index < 5) {
+                                      if (value.isNotEmpty && index < 5) {
                                         _focusNodes[index + 1].requestFocus();
+                                      } else if (value.isEmpty && index > 0) {
+                                        _focusNodes[index - 1].requestFocus();
                                       }
                                     },
                                   ),
@@ -222,61 +311,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               }),
                             ),
                           ),
-                          
-                          const SizedBox(height: 32),
-                          
-                          // Timer text
-                          Text(
-                            'بعد $_secondsRemaining ثانية يمكنك',
-                            style: const TextStyle(
-                              color: Color(0xFF2B2B2A),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 8),
-                          
-                          // Resend link
-                          TextButton(
-                            onPressed: _secondsRemaining == 0 ? _resendOtp : null,
-                            child: Text(
-                              'إعادة إرسال الرمز عن طريق الواتساب',
-                              style: TextStyle(
-                                color: _secondsRemaining == 0 
-                                    ? const Color(0xFF1DAF52) 
-                                    : const Color(0xFFB0B0B0),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // Help text
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                            child: Text(
-                              'إذا لم تكن قد تلقيت الرمز عن طريق الواتساب، فيرجى طلب ذلك',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Color(0xFF6B6B6B),
-                                fontSize: 13,
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                          
                           const SizedBox(height: 40),
-                          
-                          // Resend button
+                          // Verify button
                           SizedBox(
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _resendOtp,
+                              onPressed: _isLoading ? null : _handleVerify,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1DAF52),
                                 shape: RoundedRectangleBorder(
@@ -284,15 +325,48 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text(
-                                'إعادة إرسال رمز',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'تحقق',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
+                          ),
+                          const SizedBox(height: 24),
+                          // Resend OTP
+                          TextButton(
+                            onPressed: _isResending ? null : _handleResend,
+                            child: _isResending
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'إعادة إرسال الرمز',
+                                    style: TextStyle(
+                                      color: Color(0xFFC47F08),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                           ),
                         ],
                       ),

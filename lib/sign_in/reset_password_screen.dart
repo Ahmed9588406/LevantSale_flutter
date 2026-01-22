@@ -1,41 +1,53 @@
 import 'package:flutter/material.dart';
-import '../home/home_screen.dart';
 import '../api/auth/auth_service.dart';
+import 'email_login_screen.dart';
 
-class PhoneLoginScreen extends StatefulWidget {
-  const PhoneLoginScreen({Key? key}) : super(key: key);
+class ResetPasswordScreen extends StatefulWidget {
+  final String email;
+  final String otp;
+
+  const ResetPasswordScreen({
+    Key? key,
+    required this.email,
+    required this.otp,
+  }) : super(key: key);
 
   @override
-  State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
-  final TextEditingController _phoneController = TextEditingController(
-    text: '+964',
-  );
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    final phone = _phoneController.text.trim();
+  Future<void> _handleResetPassword() async {
     final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
 
     // Validation
-    if (phone.isEmpty || password.isEmpty) {
+    if (password.isEmpty || confirmPassword.isEmpty) {
       _showErrorDialog('الرجاء ملء جميع الحقول');
       return;
     }
 
-    if (!_isValidPhone(phone)) {
-      _showErrorDialog('الرجاء إدخال رقم هاتف صحيح');
+    if (password.length < 6) {
+      _showErrorDialog('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showErrorDialog('كلمات المرور غير متطابقة');
       return;
     }
 
@@ -44,19 +56,19 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     });
 
     try {
-      final result = await AuthService.loginWithPhone(
-        phone: phone,
-        password: password,
+      final result = await AuthService.resetPassword(
+        email: widget.email,
+        otp: widget.otp,
+        newPassword: password,
       );
 
       if (!mounted) return;
 
       if (result['success']) {
-        // Show success toast
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'تم تسجيل الدخول بنجاح',
+              'تم تغيير كلمة المرور بنجاح',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -74,13 +86,16 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         );
 
         Future.delayed(const Duration(milliseconds: 500), () {
-          Navigator.pushReplacement(
+          Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute(
+              builder: (context) => const EmailLoginScreen(),
+            ),
+            (route) => false,
           );
         });
       } else {
-        _showErrorDialog(result['message'] ?? 'فشل تسجيل الدخول');
+        _showErrorDialog(result['message'] ?? 'فشل تغيير كلمة المرور');
       }
     } catch (e) {
       if (mounted) {
@@ -93,12 +108,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         });
       }
     }
-  }
-
-  bool _isValidPhone(String phone) {
-    // Basic phone validation: starts with + and has at least 10 digits
-    final phoneRegex = RegExp(r'^\+\d{10,}$');
-    return phoneRegex.hasMatch(phone);
   }
 
   void _showErrorDialog(String message) {
@@ -138,7 +147,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                 ),
               ),
             ),
-
             SafeArea(
               child: Column(
                 children: [
@@ -156,7 +164,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                       ),
                     ),
                   ),
-
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -164,70 +171,35 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SizedBox(height: 20),
-
                           // Title
                           const Text(
-                            'تسجيل الدخول برقم الموبايل',
+                            'إعادة تعيين كلمة المرور',
                             style: TextStyle(
                               color: Color(0xFF2B2B2A),
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-
-                          const SizedBox(height: 60),
-
-                          // Phone number label
-                          const Align(
-                            alignment: Alignment.centerRight,
+                          const SizedBox(height: 16),
+                          // Subtitle
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
                             child: Text(
-                              'رقم الهاتف',
+                              'اختر كلمة سرية قوية لم تستخدمها من قبل',
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Color(0xFF2B2B2A),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF6B6B6B),
+                                fontSize: 14,
+                                height: 1.5,
                               ),
                             ),
                           ),
-
-                          const SizedBox(height: 8),
-
-                          // Phone number input
-                          Container(
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(100),
-                              border: Border.all(
-                                color: const Color(0xFFE5E5E5),
-                                width: 1,
-                              ),
-                            ),
-                            child: TextField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              textDirection: TextDirection.ltr,
-                              style: const TextStyle(
-                                color: Color(0xFF2B2B2A),
-                                fontSize: 16,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
+                          const SizedBox(height: 60),
                           // Password label
                           const Align(
                             alignment: Alignment.centerRight,
                             child: Text(
-                              'كلمة المرور',
+                              'كلمة المرور الجديدة',
                               style: TextStyle(
                                 color: Color(0xFF2B2B2A),
                                 fontSize: 16,
@@ -235,9 +207,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 8),
-
                           // Password input
                           Container(
                             height: 56,
@@ -262,6 +232,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                                   horizontal: 20,
                                   vertical: 16,
                                 ),
+                                hintText: '••••••',
+                                hintStyle: const TextStyle(
+                                  color: Color(0xFFB0B0B0),
+                                ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePassword
@@ -278,35 +252,73 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                               ),
                             ),
                           ),
-
-                          const SizedBox(height: 12),
-
-                          // Forgot password
-                          Align(
+                          const SizedBox(height: 24),
+                          // Confirm Password label
+                          const Align(
                             alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {
-                                // TODO: Navigate to forgot password screen
-                              },
-                              child: const Text(
-                                'نسيت كلمة المرور',
-                                style: TextStyle(
-                                  color: Color(0xFFC47F08),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                            child: Text(
+                              'تأكيد كلمة المرور',
+                              style: TextStyle(
+                                color: Color(0xFF2B2B2A),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Confirm Password input
+                          Container(
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(
+                                color: const Color(0xFFE5E5E5),
+                                width: 1,
+                              ),
+                            ),
+                            child: TextField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscureConfirmPassword,
+                              style: const TextStyle(
+                                color: Color(0xFF2B2B2A),
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
+                                ),
+                                hintText: '••••••',
+                                hintStyle: const TextStyle(
+                                  color: Color(0xFFB0B0B0),
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureConfirmPassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                    color: const Color(0xFFB0B0B0),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscureConfirmPassword =
+                                          !_obscureConfirmPassword;
+                                    });
+                                  },
                                 ),
                               ),
                             ),
                           ),
-
-                          const SizedBox(height: 32),
-
-                          // Login button
+                          const SizedBox(height: 40),
+                          // Reset button
                           SizedBox(
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleLogin,
+                              onPressed:
+                                  _isLoading ? null : _handleResetPassword,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1DAF52),
                                 shape: RoundedRectangleBorder(
@@ -321,40 +333,19 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                                       child: CircularProgressIndicator(
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                          Colors.white,
+                                        ),
                                         strokeWidth: 2,
                                       ),
                                     )
                                   : const Text(
-                                      'تسجيل الدخول',
+                                      'تغيير كلمة المرور',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 40),
-
-                          // Sign up text
-                          RichText(
-                            textAlign: TextAlign.center,
-                            text: const TextSpan(
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFFC47F08),
-                              ),
-                              children: [
-                                TextSpan(text: 'عضو جديد في '),
-                                TextSpan(
-                                  text: 'leventsale',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                TextSpan(text: ' قم بتسجيل الدخول الآن'),
-                              ],
                             ),
                           ),
                         ],
