@@ -249,7 +249,7 @@ class _AdsTabState extends State<AdsTab> {
                     final e = items[i];
                     return ProfileAdCard(
                       listing: e,
-                      onSellFaster: () {
+                      onRepublish: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -262,7 +262,7 @@ class _AdsTabState extends State<AdsTab> {
                       onDelete: () async {
                         await _deleteListing((e['id'] ?? '').toString());
                       },
-                      onTap: () {
+                      onEdit: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(

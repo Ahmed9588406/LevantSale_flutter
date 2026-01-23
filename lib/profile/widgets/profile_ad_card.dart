@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import '../profile_service.dart';
+import '../../category/product_details_screen.dart';
 
 class ProfileAdCard extends StatefulWidget {
   final Map<String, dynamic> listing;
   final VoidCallback? onDelete;
-  final VoidCallback? onSellFaster;
-  final VoidCallback? onTap;
+  final VoidCallback? onRepublish;
+  final VoidCallback? onEdit;
 
   const ProfileAdCard({
-    Key? key,
+    super.key,
     required this.listing,
     this.onDelete,
-    this.onSellFaster,
-    this.onTap,
-  }) : super(key: key);
+    this.onRepublish,
+    this.onEdit,
+  });
 
   @override
   State<ProfileAdCard> createState() => _ProfileAdCardState();
@@ -108,9 +109,17 @@ class _ProfileAdCardState extends State<ProfileAdCard> {
     final calls =
         int.tryParse((widget.listing['leadCount'] ?? '0').toString()) ?? 0;
     final imgs = _images;
+    final listingId = (widget.listing['id'] ?? '').toString();
 
     return InkWell(
-      onTap: widget.onTap,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductDetailsScreen(listingId: listingId),
+          ),
+        );
+      },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -328,7 +337,7 @@ class _ProfileAdCardState extends State<ProfileAdCard> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: widget.onTap,
+                onPressed: widget.onDelete,
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFFBDBDBD)),
                   padding: const EdgeInsets.symmetric(
@@ -345,7 +354,7 @@ class _ProfileAdCardState extends State<ProfileAdCard> {
             const SizedBox(width: 8),
             Expanded(
               child: ElevatedButton(
-                onPressed: widget.onSellFaster,
+                onPressed: widget.onRepublish,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1DAF52),
                   padding: const EdgeInsets.symmetric(
@@ -366,7 +375,7 @@ class _ProfileAdCardState extends State<ProfileAdCard> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: widget.onTap,
+                onPressed: widget.onDelete,
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFFBDBDBD)),
                   padding: const EdgeInsets.symmetric(
@@ -383,7 +392,7 @@ class _ProfileAdCardState extends State<ProfileAdCard> {
             const SizedBox(width: 8),
             Expanded(
               child: ElevatedButton(
-                onPressed: widget.onSellFaster,
+                onPressed: widget.onRepublish,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1DAF52),
                   padding: const EdgeInsets.symmetric(
