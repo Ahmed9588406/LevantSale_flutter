@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:leventsale/api/home/home_service.dart';
 import 'package:leventsale/category/product_details_screen.dart';
+import 'package:leventsale/services/favorites_service.dart';
+import 'package:leventsale/services/toast_service.dart';
 
 class ProductSections extends StatefulWidget {
   const ProductSections({super.key});
@@ -11,11 +13,73 @@ class ProductSections extends StatefulWidget {
 
 class _ProductSectionsState extends State<ProductSections> {
   late Future<List<Listing>> _future;
+  Set<String> _favoriteIds = {};
+  Set<String> _loadingIds = {}; // Track which items are loading
 
   @override
   void initState() {
     super.initState();
-    _future = HomeService.fetchListings();
+    _future = _fetchListingsAndInitFavorites();
+  }
+
+  /// Fetch listings and initialize favorite state from the listing's `favorite` field
+  Future<List<Listing>> _fetchListingsAndInitFavorites() async {
+    final listings = await HomeService.fetchListings();
+
+    // Initialize favorites from the listing data (API returns favorite status per listing)
+    final Set<String> favIds = {};
+    for (final listing in listings) {
+      if (listing.favorite) {
+        favIds.add(listing.id);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _favoriteIds = favIds;
+      });
+    }
+
+    return listings;
+  }
+
+  Future<void> _toggleFavorite(String listingId) async {
+    if (_loadingIds.contains(listingId)) return;
+
+    setState(() {
+      _loadingIds.add(listingId);
+    });
+
+    final isFavorite = _favoriteIds.contains(listingId);
+    final result = await FavoritesService.toggleFavorite(listingId, isFavorite);
+
+    if (mounted) {
+      setState(() {
+        _loadingIds.remove(listingId);
+        if (result.success) {
+          if (result.isFavorite == true) {
+            _favoriteIds.add(listingId);
+          } else {
+            _favoriteIds.remove(listingId);
+          }
+        }
+      });
+
+      // Show toast
+      if (result.success) {
+        if (result.isFavorite == true) {
+          AppToast.showFavoriteAdded(context);
+        } else {
+          AppToast.showFavoriteRemoved(context);
+        }
+      } else {
+        if (result.errorCode == 'NOT_LOGGED_IN') {
+          AppToast.showLoginRequired(context);
+        } else {
+          AppToast.showError(context, result.message);
+        }
+      }
+    }
   }
 
   String _formatTimeAgo(String createdAt) {
@@ -202,22 +266,68 @@ class _ProductSectionsState extends State<ProductSections> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image
-                  Container(
-                    height: 120,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
+                  // Image with favorite button
+                  Stack(
+                    children: [
+                      Container(
+                        height: 120,
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            topRight: Radius.circular(12),
+                          ),
+                          image: img.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(img),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                          color: const Color(0xFFF2F2F2),
+                        ),
                       ),
-                      image: img.isNotEmpty
-                          ? DecorationImage(
-                              image: NetworkImage(img),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      color: const Color(0xFFF2F2F2),
-                    ),
+                      // Favorite button
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: GestureDetector(
+                          onTap: () => _toggleFavorite(p.id),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: _loadingIds.contains(p.id)
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color(0xFFE91E63),
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    _favoriteIds.contains(p.id)
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                    color: _favoriteIds.contains(p.id)
+                                        ? const Color(0xFFE91E63)
+                                        : const Color(0xFF757575),
+                                    size: 18,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   // Details
                   Padding(

@@ -108,7 +108,8 @@ class _CarSellStep2State extends State<CarSellStep2> {
         map[aid] = values;
       }
     });
-    AdFormDraft.instance.attributes = map;
+    // Store attributes in formData instead of deprecated attributes field
+    AdFormDraft.instance.formData.attributes = map;
   }
 
   @override

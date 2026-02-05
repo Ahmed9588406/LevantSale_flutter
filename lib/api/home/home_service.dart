@@ -59,16 +59,56 @@ class ListingCurrency {
 }
 
 class ListingAttribute {
+  final String attributeId;
   final String attributeName;
-  final String valueString;
+  final String attributeType;
+  final String? unit;
+  final bool? valueBoolean;
+  final double? valueNumber;
+  final String? valueString;
 
-  ListingAttribute({required this.attributeName, required this.valueString});
+  ListingAttribute({
+    required this.attributeId,
+    required this.attributeName,
+    required this.attributeType,
+    this.unit,
+    this.valueBoolean,
+    this.valueNumber,
+    this.valueString,
+  });
 
   factory ListingAttribute.fromJson(Map<String, dynamic> json) {
     return ListingAttribute(
+      attributeId: (json['attributeId'] ?? '').toString(),
       attributeName: (json['attributeName'] ?? '').toString(),
-      valueString: (json['valueString'] ?? '').toString(),
+      attributeType: (json['attributeType'] ?? '').toString(),
+      unit: json['unit']?.toString(),
+      valueBoolean: json['valueBoolean'] as bool?,
+      valueNumber: json['valueNumber'] is num
+          ? (json['valueNumber'] as num).toDouble()
+          : null,
+      valueString: json['valueString']?.toString(),
     );
+  }
+
+  /// Get display value with unit if available
+  String get displayValue {
+    String value = '';
+    if (valueString != null && valueString!.isNotEmpty) {
+      value = valueString!;
+    } else if (valueNumber != null) {
+      value = valueNumber!.toStringAsFixed(
+        valueNumber! == valueNumber!.roundToDouble() ? 0 : 2,
+      );
+    } else if (valueBoolean != null) {
+      value = valueBoolean! ? 'نعم' : 'لا';
+    }
+
+    // Append unit if available
+    if (unit != null && unit!.isNotEmpty && value.isNotEmpty) {
+      return '$value $unit';
+    }
+    return value;
   }
 }
 
@@ -87,6 +127,7 @@ class Listing {
   final String? userPhone;
   final String? condition;
   final bool? isFeatured;
+  final bool favorite; // Favorite status from API
   final List<ListingAttribute>? attributes;
 
   Listing({
@@ -104,6 +145,7 @@ class Listing {
     this.userPhone,
     this.condition,
     this.isFeatured,
+    this.favorite = false,
     this.attributes,
   });
 
@@ -135,6 +177,7 @@ class Listing {
       userPhone: json['userPhone']?.toString(),
       condition: json['condition']?.toString(),
       isFeatured: json['isFeatured'] as bool?,
+      favorite: json['favorite'] == true,
       attributes: attrs,
     );
   }
@@ -215,9 +258,7 @@ class HomeService {
     String? excludeId,
     int limit = 5,
   }) async {
-    final queryParams = <String, String>{
-      'limit': limit.toString(),
-    };
+    final queryParams = <String, String>{'limit': limit.toString()};
     if (excludeId != null && excludeId.isNotEmpty) {
       queryParams['exclude'] = excludeId;
     }

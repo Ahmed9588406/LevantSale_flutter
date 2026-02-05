@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../myAds/my_ads_screen.dart';
-import '../../createAdd/step1.dart';
+import '../../createAdd/create_ad_screen.dart';
 import '../../messages/messages_list_screen.dart';
 import '../../profile/profile_screen.dart';
 import '../../verification/verification_status_screen.dart';
@@ -13,58 +13,10 @@ class CustomBottomNavBar extends StatelessWidget {
   final Function(int) onTap;
 
   const CustomBottomNavBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
-
-  // Context-aware SVG loader: check asset existence and show fallback icon if missing.
-  static Future<bool> _assetExists(
-    BuildContext context,
-    String assetPath,
-  ) async {
-    try {
-      await DefaultAssetBundle.of(context).load(assetPath);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static Widget _svgIcon(
-    BuildContext context,
-    String assetPath, {
-    required Color color,
-    double width = 26,
-    double height = 26,
-    IconData fallback = Icons.image_outlined,
-  }) {
-    // Use FutureBuilder to avoid throwing when asset file is missing.
-    return FutureBuilder<bool>(
-      future: _assetExists(context, assetPath),
-      builder: (ctx, snapshot) {
-        final icon = Icon(fallback, size: width, color: color);
-        if (snapshot.connectionState != ConnectionState.done) {
-          return SizedBox(
-            width: width,
-            height: height,
-            child: Center(child: icon),
-          );
-        }
-        if (snapshot.hasData && snapshot.data == true) {
-          return SvgPicture.asset(
-            assetPath,
-            width: width,
-            height: height,
-            fit: BoxFit.contain,
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            placeholderBuilder: (context) => icon,
-          );
-        }
-        return icon;
-      },
-    );
-  }
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -91,36 +43,37 @@ class CustomBottomNavBar extends StatelessWidget {
             children: [
               Flexible(
                 child: _buildNavItem(
+                  context: context,
                   icon: const Icon(Icons.verified_user_outlined),
                   label: 'توثيق',
                   index: 5,
-                  onCustomTap: () {
-                    () async {
-                      final status =
-                          await ProfileService.fetchVerificationStatus();
-                      if (status == null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const VerificationStepOneScreen(),
-                          ),
-                        );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const VerificationStatusScreen(),
-                          ),
-                        );
-                      }
-                    }();
+                  onCustomTap: () async {
+                    final status =
+                        await ProfileService.fetchVerificationStatus();
+                    if (!context.mounted) return;
+                    if (status == null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const VerificationStepOneScreen(),
+                        ),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const VerificationStatusScreen(),
+                        ),
+                      );
+                    }
                   },
                 ),
               ),
               Flexible(
                 child: _buildNavItem(
+                  context: context,
                   icon: const Icon(Icons.person_outline),
                   label: 'حسابي',
                   index: 4,
@@ -136,6 +89,7 @@ class CustomBottomNavBar extends StatelessWidget {
               ),
               Flexible(
                 child: _buildNavItem(
+                  context: context,
                   icon: const Icon(Icons.view_headline),
                   label: 'إعلاناتي',
                   index: 3,
@@ -149,19 +103,12 @@ class CustomBottomNavBar extends StatelessWidget {
                   },
                 ),
               ),
-              const SizedBox(width: 60), // Space for center FAB
+              const SizedBox(width: 70), // Space for center FAB
               Flexible(
                 child: _buildNavItem(
-                  icon: _svgIcon(
-                    context,
-                    'icons/message.svg',
-                    color: currentIndex == 1
-                        ? const Color(0xFF1DAF52)
-                        : const Color(0xFF9E9E9E),
-                    width: 22,
-                    height: 22,
-                    fallback: Icons.chat_bubble_outline,
-                  ),
+                  context: context,
+                  iconPath: 'icons/message.svg',
+                  fallbackIcon: Icons.chat_bubble_outline,
                   label: 'رسائل',
                   index: 1,
                   onCustomTap: () {
@@ -176,16 +123,9 @@ class CustomBottomNavBar extends StatelessWidget {
               ),
               Flexible(
                 child: _buildNavItem(
-                  icon: _svgIcon(
-                    context,
-                    'icons/home.svg',
-                    color: currentIndex == 0
-                        ? const Color(0xFF1DAF52)
-                        : const Color(0xFF9E9E9E),
-                    width: 22,
-                    height: 22,
-                    fallback: Icons.home_outlined,
-                  ),
+                  context: context,
+                  iconPath: 'icons/home.svg',
+                  fallbackIcon: Icons.home_outlined,
                   label: 'الرئيسية',
                   index: 0,
                 ),
@@ -193,72 +133,32 @@ class CustomBottomNavBar extends StatelessWidget {
             ],
           ),
 
-          // Centered Floating Action Button with Glow
+          // Centered Add Button - Larger SVG Icon
           Positioned(
-            top: -28,
+            top: -35,
             child: GestureDetector(
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const CarSellForm()),
+                  MaterialPageRoute(
+                    builder: (context) => const CreateAdScreen(),
+                  ),
                 );
               },
-              child: Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    // Outer glow - lightest
-                    BoxShadow(
-                      color: const Color(0xFF1DAF52).withOpacity(0.15),
-                      blurRadius: 30,
-                      spreadRadius: 10,
-                    ),
-                    // Middle glow
-                    BoxShadow(
-                      color: const Color(0xFF1DAF52).withOpacity(0.25),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    ),
-                    // Inner glow - strongest
-                    BoxShadow(
-                      color: const Color(0xFF1DAF52).withOpacity(0.4),
-                      blurRadius: 10,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF5FB57C), Color(0xFF1DAF52)],
-                    ),
-                    shape: BoxShape.circle,
+              child: SizedBox(
+                width: 100,
+                height: 100,
+                child: SvgPicture.asset(
+                  'icons/add.svg',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.contain,
+                  placeholderBuilder: (context) => const Icon(
+                    Icons.add_circle,
+                    size: 100,
+                    color: Color(0xFF1DAF52),
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 34),
                 ),
-              ),
-            ),
-          ),
-
-          // Icon below FAB (uses icons/add.svg)
-          Positioned(
-            bottom: 6,
-            child: SizedBox(
-              width: 30,
-              height: 30,
-              child: _svgIcon(
-                context,
-                'icons/add.svg',
-                color: currentIndex == 2
-                    ? const Color(0xFF1DAF52)
-                    : const Color(0xFF757575),
-                width: 30,
-                height: 30,
-                fallback: Icons.add,
               ),
             ),
           ),
@@ -268,12 +168,39 @@ class CustomBottomNavBar extends StatelessWidget {
   }
 
   Widget _buildNavItem({
-    required Widget icon,
+    required BuildContext context,
+    Widget? icon,
+    String? iconPath,
+    IconData? fallbackIcon,
     required String label,
     required int index,
     VoidCallback? onCustomTap,
   }) {
     final isSelected = currentIndex == index;
+    final color = isSelected
+        ? const Color(0xFF1DAF52)
+        : const Color(0xFF9E9E9E);
+
+    Widget displayIcon;
+    if (icon != null) {
+      displayIcon = icon;
+    } else if (iconPath != null) {
+      displayIcon = SvgPicture.asset(
+        iconPath,
+        width: 22,
+        height: 22,
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+        placeholderBuilder: (context) =>
+            Icon(fallbackIcon ?? Icons.image_outlined, size: 22, color: color),
+      );
+    } else {
+      displayIcon = Icon(
+        fallbackIcon ?? Icons.image_outlined,
+        size: 22,
+        color: color,
+      );
+    }
 
     return InkWell(
       onTap: onCustomTap ?? () => onTap(index),
@@ -284,15 +211,9 @@ class CustomBottomNavBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Use IconTheme so both Icon widgets and SvgPicture respect size/color
             IconTheme(
-              data: IconThemeData(
-                color: isSelected
-                    ? const Color(0xFF1DAF52)
-                    : const Color(0xFF9E9E9E),
-                size: 22,
-              ),
-              child: icon,
+              data: IconThemeData(color: color, size: 22),
+              child: displayIcon,
             ),
             const SizedBox(height: 2),
             Text(
@@ -316,7 +237,7 @@ class CustomBottomNavBar extends StatelessWidget {
 
 // Example usage in a Scaffold:
 class ExampleScreen extends StatefulWidget {
-  const ExampleScreen({Key? key}) : super(key: key);
+  const ExampleScreen({super.key});
 
   @override
   State<ExampleScreen> createState() => _ExampleScreenState();

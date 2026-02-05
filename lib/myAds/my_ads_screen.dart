@@ -8,6 +8,7 @@ import '../verification/verification_step_one_screen.dart';
 import '../profile/profile_service.dart';
 import '../category/product_details_screen.dart';
 import '../profile/profile_screen.dart';
+import '../createAdd/create_ad_screen.dart';
 
 class MyAdsScreen extends StatefulWidget {
   const MyAdsScreen({super.key});
@@ -322,15 +323,19 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
           children: [
             // Edit option
             InkWell(
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                // Navigate to product details screen
-                Navigator.push(
+                // Navigate to CreateAdScreen for editing
+                final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ProductDetailsScreen(listingId: ad.id),
+                    builder: (_) => CreateAdScreen(editingId: ad.id),
                   ),
                 );
+                // Refresh list if ad was updated
+                if (result == true) {
+                  _fetchAllAds();
+                }
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(

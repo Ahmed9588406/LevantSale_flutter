@@ -3,20 +3,30 @@ import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
 import '../api/auth/auth_config.dart';
+import 'models/chat_models.dart';
 
 class ChatSocket {
   final String token;
-  final void Function(Map<String, dynamic> message)? onMessage;
+  final void Function(ChatMessageApi message)? onMessage;
   final void Function(Map<String, dynamic> status)? onStatus;
   final void Function(Map<String, dynamic> presence)? onPresence;
+  final void Function()? onConnected;
+  final void Function()? onDisconnected;
+  final void Function(dynamic error)? onError;
 
   StompClient? _client;
+  bool _isConnected = false;
+
+  bool get isConnected => _isConnected;
 
   ChatSocket({
     required this.token,
     this.onMessage,
     this.onStatus,
     this.onPresence,
+    this.onConnected,
+    this.onDisconnected,
+    this.onError,
   });
 
   String get _sockJsUrl {
@@ -36,15 +46,23 @@ class ChatSocket {
           'Authorization': token.startsWith('Bearer') ? token : 'Bearer $token',
         },
         onConnect: (frame) {
+          _isConnected = true;
           _subscribe();
+          onConnected?.call();
         },
         onWebSocketError: (err) {
-          // ignore
+          _isConnected = false;
+          onError?.call(err);
         },
         onStompError: (frame) {
-          // ignore
+          _isConnected = false;
+          onError?.call(frame);
         },
-        onDisconnect: (frame) {},
+        onDisconnect: (frame) {
+          _isConnected = false;
+          onDisconnected?.call();
+        },
+        reconnectDelay: const Duration(seconds: 5),
       ),
     );
     _client?.activate();
@@ -59,7 +77,8 @@ class ChatSocket {
       callback: (StompFrame f) {
         try {
           final data = jsonDecode(f.body ?? '{}') as Map<String, dynamic>;
-          onMessage?.call(data);
+          final message = ChatMessageApi.fromJson(data);
+          onMessage?.call(message);
         } catch (_) {}
       },
     );
@@ -94,7 +113,25 @@ class ChatSocket {
     c.send(destination: destination, body: body);
   }
 
-  void sendMessage(Map<String, dynamic> payload) {
+  /// Send a chat message with full payload support
+  void sendMessage({
+    required String receiverId,
+    required String content,
+    MessageType messageType = MessageType.TEXT,
+    String? fileUrl,
+    String? fileName,
+    String? fileType,
+    int? fileSize,
+  }) {
+    final payload = {
+      'receiverId': receiverId,
+      'content': content,
+      'messageType': messageType.name,
+      if (fileUrl != null) 'fileUrl': fileUrl,
+      if (fileName != null) 'fileName': fileName,
+      if (fileType != null) 'fileType': fileType,
+      if (fileSize != null) 'fileSize': fileSize,
+    };
     publish(destination: '/app/chat.send', body: jsonEncode(payload));
   }
 
@@ -104,7 +141,10 @@ class ChatSocket {
 
   void disconnect() {
     // announce offline presence
-    publish(destination: '/app/presence.offline', body: '');
+    if (_isConnected) {
+      publish(destination: '/app/presence.offline', body: '');
+    }
+    _isConnected = false;
     _client?.deactivate();
     _client = null;
   }

@@ -1,38 +1,147 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'onboarding/onboarding_screen.dart';
 import 'sign_in/sign_in_screen.dart';
+import 'home/home_screen.dart';
+import 'services/session_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'notifications/notifications_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables from .env file
+  await dotenv.load(fileName: 'assets/.env');
+
   final prefs = await SharedPreferences.getInstance();
   final bool onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+
   // Initialize notifications and register background handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await NotificationsService.initialize();
 
-  runApp(MyApp(showOnboarding: !onboardingComplete));
+  // Check for existing session
+  bool hasSession = false;
+  if (onboardingComplete) {
+    hasSession = await SessionService.hasValidSession();
+  }
+
+  runApp(MyApp(showOnboarding: !onboardingComplete, hasSession: hasSession));
 }
 
 class MyApp extends StatelessWidget {
   final bool showOnboarding;
+  final bool hasSession;
 
-  const MyApp({super.key, required this.showOnboarding});
+  const MyApp({
+    super.key,
+    required this.showOnboarding,
+    this.hasSession = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Leventsale',
-      debugShowCheckedModeBanner: false, // removed debug indicator/banner
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1DAF52)),
         textTheme: GoogleFonts.rubikTextTheme(Theme.of(context).textTheme),
         fontFamily: GoogleFonts.rubik().fontFamily,
       ),
-      home: showOnboarding ? const OnboardingScreen() : const SignInScreen(),
+      home: showOnboarding
+          ? const OnboardingScreen()
+          : hasSession
+          ? const SplashAutoLoginScreen()
+          : const SignInScreen(),
+    );
+  }
+}
+
+/// Splash screen that handles auto-login
+class SplashAutoLoginScreen extends StatefulWidget {
+  const SplashAutoLoginScreen({super.key});
+
+  @override
+  State<SplashAutoLoginScreen> createState() => _SplashAutoLoginScreenState();
+}
+
+class _SplashAutoLoginScreenState extends State<SplashAutoLoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _attemptAutoLogin();
+  }
+
+  Future<void> _attemptAutoLogin() async {
+    try {
+      final result = await SessionService.tryAutoLogin();
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        // Auto-login successful, navigate to home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        // Auto-login failed, navigate to sign in
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SignInScreen()),
+        );
+      }
+    } catch (e) {
+      // On error, navigate to sign in
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SignInScreen()),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // App logo or icon
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1DAF52),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.store, size: 50, color: Colors.white),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Leventsale',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2B2B2A),
+              ),
+            ),
+            const SizedBox(height: 32),
+            const CircularProgressIndicator(color: Color(0xFF1DAF52)),
+            const SizedBox(height: 16),
+            const Text(
+              'جارٍ تسجيل الدخول...',
+              style: TextStyle(fontSize: 16, color: Color(0xFFB0B0B0)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

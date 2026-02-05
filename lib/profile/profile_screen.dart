@@ -3,6 +3,8 @@ import 'profile_service.dart';
 import 'widgets/profile_ad_card.dart';
 import '../category/product_details_screen.dart';
 import '../verification/verification_status_screen.dart';
+import '../services/session_service.dart';
+import '../sign_in/sign_in_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -41,6 +43,42 @@ class _ProfileScreenState extends State<ProfileScreen>
     });
   }
 
+  Future<void> _handleLogout() async {
+    // Show confirmation dialog
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تسجيل الخروج'),
+        content: const Text('هل أنت متأكد من تسجيل الخروج؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('تسجيل الخروج'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      // Clear session
+      await SessionService.clearSession();
+
+      if (!mounted) return;
+
+      // Navigate to sign in screen and clear navigation stack
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const SignInScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -50,6 +88,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           title: const Text('حسابي'),
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
+          actions: [
+            // Logout button
+            IconButton(
+              icon: const Icon(Icons.logout, color: Colors.red),
+              tooltip: 'تسجيل الخروج',
+              onPressed: _handleLogout,
+            ),
+          ],
           bottom: TabBar(
             controller: _tabController,
             indicatorColor: const Color(0xFF1DAF52),

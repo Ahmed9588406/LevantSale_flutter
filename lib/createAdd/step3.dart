@@ -108,7 +108,7 @@ class _CarSellStep3State extends State<CarSellStep3> {
       };
 
       // Map dynamic attributes from draft to backend schema
-      final attrsMap = AdFormDraft.instance.attributes;
+      final attrsMap = AdFormDraft.instance.formData.attributes;
       if (attrsMap.isNotEmpty) {
         final List<Map<String, dynamic>> attrsList = [];
         attrsMap.forEach((attrId, value) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:leventsale/api/home/home_service.dart';
+import 'package:leventsale/services/favorites_service.dart';
+import 'package:leventsale/services/toast_service.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final String? listingId;
@@ -20,11 +22,55 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   final PageController _pageController = PageController();
   int _currentImage = 0;
 
+  // Favorites state
+  Set<String> _favoriteIds = {};
+  bool _favoriteLoading = false;
+
   @override
   void initState() {
     super.initState();
     if (widget.listingId != null && widget.listingId!.isNotEmpty) {
       _fetchData(widget.listingId!);
+    }
+    // Favorite state is initialized from the listing's `favorite` field in _fetchData
+  }
+
+  Future<void> _toggleFavorite(String listingId) async {
+    if (_favoriteLoading) return;
+
+    setState(() {
+      _favoriteLoading = true;
+    });
+
+    final isFavorite = _favoriteIds.contains(listingId);
+    final result = await FavoritesService.toggleFavorite(listingId, isFavorite);
+
+    if (mounted) {
+      setState(() {
+        _favoriteLoading = false;
+        if (result.success) {
+          if (result.isFavorite == true) {
+            _favoriteIds.add(listingId);
+          } else {
+            _favoriteIds.remove(listingId);
+          }
+        }
+      });
+
+      // Show toast
+      if (result.success) {
+        if (result.isFavorite == true) {
+          AppToast.showFavoriteAdded(context);
+        } else {
+          AppToast.showFavoriteRemoved(context);
+        }
+      } else {
+        if (result.errorCode == 'NOT_LOGGED_IN') {
+          AppToast.showLoginRequired(context);
+        } else {
+          AppToast.showError(context, result.message);
+        }
+      }
     }
   }
 
@@ -43,6 +89,17 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       setState(() {
         _listing = l;
         _related = related;
+
+        // Initialize favorite state from API response
+        if (l.favorite) {
+          _favoriteIds.add(l.id);
+        }
+        // Also add favorites from related listings
+        for (final r in related) {
+          if (r.favorite) {
+            _favoriteIds.add(r.id);
+          }
+        }
       });
     } catch (e) {
       setState(() {
@@ -224,13 +281,36 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             color: Colors.black.withOpacity(0.3),
                             shape: BoxShape.circle,
                           ),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.favorite_border,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {},
-                          ),
+                          child: _favoriteLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : IconButton(
+                                  icon: Icon(
+                                    _favoriteIds.contains(widget.listingId)
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                    color:
+                                        _favoriteIds.contains(widget.listingId)
+                                        ? const Color(0xFFE91E63)
+                                        : Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    if (widget.listingId != null) {
+                                      _toggleFavorite(widget.listingId!);
+                                    }
+                                  },
+                                ),
                         ),
                       ),
                     ],
@@ -278,7 +358,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   .map(
                                     (a) => _buildDetailRow(
                                       a.attributeName,
-                                      a.valueString,
+                                      a.displayValue, // Uses unit if available
                                     ),
                                   )
                                   .expand(
@@ -394,7 +474,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
   void _showPhoneModal(BuildContext context) {
     final phoneNumber = _listing?.userPhone ?? 'غير متوفر';
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -495,9 +575,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ProductDetailsScreen(
-              listingId: item.id,
-            ),
+            builder: (_) => ProductDetailsScreen(listingId: item.id),
           ),
         );
       },
@@ -562,22 +640,29 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 Positioned(
                   bottom: 8,
                   left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.favorite_border,
-                      color: Color(0xFF9E9E9E),
-                      size: 16,
+                  child: GestureDetector(
+                    onTap: () => _toggleFavorite(item.id),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _favoriteIds.contains(item.id)
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        color: _favoriteIds.contains(item.id)
+                            ? const Color(0xFFE91E63)
+                            : const Color(0xFF9E9E9E),
+                        size: 16,
+                      ),
                     ),
                   ),
                 ),

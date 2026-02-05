@@ -4,6 +4,7 @@ import 'email_signup_screen.dart';
 import 'forgot_password_screen.dart';
 import '../home/home_screen.dart';
 import '../api/auth/auth_service.dart';
+import '../services/session_service.dart';
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({Key? key}) : super(key: key);
@@ -17,6 +18,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _rememberMe = true; // Remember me checkbox state
 
   @override
   void dispose() {
@@ -55,11 +57,21 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       if (result['success']) {
         try {
           final data = result['data'] as Map<String, dynamic>?;
-          final token = data?['token']?.toString();
-          if (token != null && token.isNotEmpty) {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('token', token);
-          }
+          final token = data?['token']?.toString() ?? '';
+          final userName = data?['name']?.toString();
+          final userPhone = data?['phone']?.toString();
+          final userId = data?['id']?.toString();
+
+          // Save session for auto-login
+          await SessionService.saveSession(
+            email: email,
+            password: password,
+            token: token,
+            userName: userName,
+            userPhone: userPhone,
+            userId: userId,
+            rememberMe: _rememberMe,
+          );
         } catch (_) {}
         // Show success toast
         ScaffoldMessenger.of(context).showSnackBar(

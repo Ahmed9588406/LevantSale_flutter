@@ -1,8 +1,11 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// API Configuration for Authentication
 class AuthConfig {
   /// Base URL for the API
-  /// Replace with your actual API base URL
-  static const String baseUrl = 'https://levant.twingroups.com';
+  /// Reads from .env file, falls back to default if not set
+  static String get baseUrl =>
+      dotenv.env['BASE_URL'] ?? 'https://api.levantsale.com';
 
   /// Login endpoint
   static const String loginEndpoint = '/auth/login/email';

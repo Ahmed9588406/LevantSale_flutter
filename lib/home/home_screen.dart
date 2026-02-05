@@ -24,32 +24,43 @@ class _HomeScreenState extends State<HomeScreen> {
         body: SafeArea(
           child: Stack(
             children: [
-              SingleChildScrollView(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
+              // Main scrollable content
+              CustomScrollView(
+                slivers: [
+                  // Search bar (stays at top, not in scroll)
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        // Search bar with inline results
+                        const SearchBarWidget(),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
 
-                    // Search bar and notification
-                    const SearchBarWidget(),
+                  // Banner carousel
+                  const SliverToBoxAdapter(child: BannerCarousel()),
 
-                    const SizedBox(height: 16),
+                  // Categories section
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 24),
+                      child: CategorySection(),
+                    ),
+                  ),
 
-                    // Banner carousel
-                    const BannerCarousel(),
+                  // Product sections
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 24),
+                      child: ProductSections(),
+                    ),
+                  ),
 
-                    const SizedBox(height: 24),
-
-                    // Categories section
-                    const CategorySection(),
-
-                    const SizedBox(height: 24),
-
-                    // Product sections (grouped by category) from API
-                    const ProductSections(),
-
-                    const SizedBox(height: 100),
-                  ],
-                ),
+                  // Bottom padding for nav bar
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
               ),
 
               // Bottom navigation bar

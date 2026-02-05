@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'step2.dart';
+import 'create_ad_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,15 +14,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'بيع سيارتك',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        fontFamily: 'Cairo',
-      ),
-      home: const CarSellForm(),
+      theme: ThemeData(primarySwatch: Colors.green, fontFamily: 'Cairo'),
+      // Use new CreateAdScreen for full backend integration
+      home: const CreateAdScreen(),
     );
   }
 }
 
+/// Legacy widget - kept for backward compatibility
+/// For new implementations, use CreateAdScreen instead
 class CarSellForm extends StatefulWidget {
   const CarSellForm({Key? key}) : super(key: key);
 
@@ -58,10 +59,7 @@ class _CarSellFormState extends State<CarSellForm> {
           ),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(
-              color: Colors.grey[200],
-              height: 1,
-            ),
+            child: Container(color: Colors.grey[200], height: 1),
           ),
         ),
         body: Column(
@@ -95,15 +93,12 @@ class _CarSellFormState extends State<CarSellForm> {
                   const SizedBox(height: 4),
                   Text(
                     'الفئة والموديل والبيانات الأساسية',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
                 ],
               ),
             ),
-            
+
             // Form Content
             Expanded(
               child: SingleChildScrollView(
@@ -127,7 +122,9 @@ class _CarSellFormState extends State<CarSellForm> {
                               child: DropdownButton<String>(
                                 value: selectedDepartment,
                                 isExpanded: true,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 items: ['سيارات'].map((String value) {
                                   return DropdownMenuItem<String>(
                                     value: value,
@@ -159,9 +156,9 @@ class _CarSellFormState extends State<CarSellForm> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // ناقل الحركة (Transmission)
                     _buildLabel('ناقل الحركة'),
                     const SizedBox(height: 8),
@@ -184,9 +181,9 @@ class _CarSellFormState extends State<CarSellForm> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // هيكل السيارة (Car Structure/Photos)
                     _buildLabel('هيكل السيارة'),
                     const SizedBox(height: 8),
@@ -205,30 +202,30 @@ class _CarSellFormState extends State<CarSellForm> {
                         _buildPhotoBox(false),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // الماركة (Brand)
                     _buildLabel('الماركة'),
                     const SizedBox(height: 8),
                     _buildSearchField('إختر الماركة'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // الموديل (Model)
                     _buildLabel('الموديل'),
                     const SizedBox(height: 8),
                     _buildInputField('أدخل الموديل'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // النسخة (Version)
                     _buildLabel('النسخة'),
                     const SizedBox(height: 8),
                     _buildDropdownField('أدخل النسخة'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // الحالة (Condition)
                     _buildLabel('الحالة'),
                     const SizedBox(height: 8),
@@ -251,27 +248,27 @@ class _CarSellFormState extends State<CarSellForm> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // كيلو مترات (Kilometers)
                     _buildLabel('كيلو مترات'),
                     const SizedBox(height: 8),
                     _buildInputField('أدخل كيلومترات مثال 42,500 كم'),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // السنة (Year)
                     _buildLabel('السنة'),
                     const SizedBox(height: 8),
                     _buildInputField('أدخل السنة'),
-                    
+
                     const SizedBox(height: 32),
                   ],
                 ),
               ),
             ),
-            
+
             // Bottom Button
             Container(
               padding: const EdgeInsets.all(16),
@@ -403,11 +400,7 @@ class _CarSellFormState extends State<CarSellForm> {
                   color: Color(0xFF00A651),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 24),
               )
             : Icon(
                 Icons.camera_alt_outlined,
@@ -429,16 +422,13 @@ class _CarSellFormState extends State<CarSellForm> {
         textAlign: TextAlign.right,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 16,
-          ),
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 16),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          suffixIcon: Icon(
-            Icons.search,
-            color: Colors.grey[400],
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
           ),
+          suffixIcon: Icon(Icons.search, color: Colors.grey[400]),
         ),
       ),
     );
@@ -455,12 +445,12 @@ class _CarSellFormState extends State<CarSellForm> {
         textAlign: TextAlign.right,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 16,
-          ),
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 16),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -476,19 +466,13 @@ class _CarSellFormState extends State<CarSellForm> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Icon(
-            Icons.keyboard_arrow_down,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.keyboard_arrow_down, color: Colors.grey[400]),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               hint,
               textAlign: TextAlign.right,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey[400], fontSize: 16),
             ),
           ),
         ],

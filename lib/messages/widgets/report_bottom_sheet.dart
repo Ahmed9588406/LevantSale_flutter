@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import '../chat_service.dart';
 
 class ReportBottomSheet extends StatefulWidget {
   final String userName;
+  final String? userId;
+  final String? listingId;
 
-  const ReportBottomSheet({Key? key, required this.userName}) : super(key: key);
+  const ReportBottomSheet({
+    Key? key,
+    required this.userName,
+    this.userId,
+    this.listingId,
+  }) : super(key: key);
 
   @override
   State<ReportBottomSheet> createState() => _ReportBottomSheetState();
@@ -114,19 +122,20 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
                       children: [
                         Text(
                           'أريد حظر المستخدم',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.black87),
                         ),
                         const SizedBox(width: 12),
                         Container(
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: blockUser ? const Color(0xFFD4A017) : Colors.white,
+                            color: blockUser
+                                ? const Color(0xFFD4A017)
+                                : Colors.white,
                             border: Border.all(
-                              color: blockUser ? const Color(0xFFD4A017) : const Color(0xFFE0E0E0),
+                              color: blockUser
+                                  ? const Color(0xFFD4A017)
+                                  : const Color(0xFFE0E0E0),
                               width: 2,
                             ),
                             borderRadius: BorderRadius.circular(6),
@@ -147,7 +156,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
 
                   // Submit button
                   ElevatedButton(
-                    onPressed: _submitReport,
+                    onPressed: _submitting ? null : _submitReport,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD4A017),
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -156,14 +165,23 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'إرسال شكوى',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'إرسال شكوى',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
 
                   const SizedBox(height: 20),
@@ -191,10 +209,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
           children: [
             Text(
               reason,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
             ),
             const SizedBox(width: 12),
             Container(
@@ -203,7 +218,9 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF4CAF50) : const Color(0xFFE0E0E0),
+                  color: isSelected
+                      ? const Color(0xFF4CAF50)
+                      : const Color(0xFFE0E0E0),
                   width: 2,
                 ),
               ),
@@ -226,7 +243,9 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
     );
   }
 
-  void _submitReport() {
+  bool _submitting = false;
+
+  Future<void> _submitReport() async {
     if (selectedReason == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -237,14 +256,45 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
       return;
     }
 
-    // Handle report submission
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم إرسال التقرير بنجاح'),
-        backgroundColor: Color(0xFF4CAF50),
-      ),
-    );
+    if (widget.userId == null) {
+      Navigator.pop(context);
+      return;
+    }
+
+    setState(() => _submitting = true);
+
+    try {
+      final success = await ChatService.reportUser(
+        userId: widget.userId!,
+        reason: selectedReason!,
+        comment: _commentController.text.isNotEmpty
+            ? _commentController.text
+            : null,
+        listingId: widget.listingId,
+        blockUser: blockUser,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success ? 'تم إرسال التقرير بنجاح' : 'فشل إرسال التقرير',
+            ),
+            backgroundColor: success ? const Color(0xFF4CAF50) : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override

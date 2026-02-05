@@ -47,6 +47,22 @@ class ChatService {
     throw Exception('Failed to fetch conversations (${res.statusCode})');
   }
 
+  /// Get or create a conversation with another user
+  static Future<ConversationApi?> getOrCreateConversation(
+    String otherUserId,
+  ) async {
+    final url = Uri.parse(
+      '$baseUrl/api/v1/chat/conversations/get-or-create?otherUserId=$otherUserId',
+    );
+    final h = await _headers();
+    final res = await http.post(url, headers: h);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = jsonDecode(res.body);
+      return ConversationApi.fromJson(data as Map<String, dynamic>);
+    }
+    return null;
+  }
+
   static Future<List<ChatMessageApi>> fetchMessages(
     String otherUserId, {
     int page = 0,
@@ -91,6 +107,66 @@ class ChatService {
       return jsonDecode(res.body) as Map<String, dynamic>;
     }
     throw Exception('File upload failed (${res.statusCode})');
+  }
+
+  /// Delete message for current user only
+  static Future<bool> deleteMessageForMe(String messageId) async {
+    final url = Uri.parse('$baseUrl/api/v1/chat/messages/$messageId/me');
+    final h = await _headers();
+    final res = await http.delete(url, headers: h);
+    return res.statusCode >= 200 && res.statusCode < 300;
+  }
+
+  /// Delete message for everyone
+  static Future<bool> deleteMessageForEveryone(String messageId) async {
+    final url = Uri.parse('$baseUrl/api/v1/chat/messages/$messageId/everyone');
+    final h = await _headers();
+    final res = await http.delete(url, headers: h);
+    return res.statusCode >= 200 && res.statusCode < 300;
+  }
+
+  /// Fetch user details including phone
+  static Future<Map<String, dynamic>?> fetchUserDetails(String userId) async {
+    final url = Uri.parse('$baseUrl/api/v1/users/$userId');
+    final h = await _headers();
+    final res = await http.get(url, headers: h);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  /// Fetch listing details for ad context
+  static Future<ChatAdData?> fetchListingDetails(String listingId) async {
+    final url = Uri.parse('$baseUrl/api/v1/listings/$listingId');
+    final h = await _headers();
+    final res = await http.get(url, headers: h);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return ChatAdData.fromJson(data);
+    }
+    return null;
+  }
+
+  /// Report a user
+  static Future<bool> reportUser({
+    required String userId,
+    required String reason,
+    String? comment,
+    String? listingId,
+    bool blockUser = false,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/v1/reports');
+    final h = await _headers();
+    final body = jsonEncode({
+      'reportedUserId': userId,
+      'reason': reason,
+      'comment': comment,
+      'listingId': listingId,
+      'blockUser': blockUser,
+    });
+    final res = await http.post(url, headers: h, body: body);
+    return res.statusCode >= 200 && res.statusCode < 300;
   }
 
   static Future<String?> getToken() async {
