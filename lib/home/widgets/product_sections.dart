@@ -22,22 +22,26 @@ class _ProductSectionsState extends State<ProductSections> {
     _future = _fetchListingsAndInitFavorites();
   }
 
-  /// Fetch listings and initialize favorite state from the listing's `favorite` field
+  /// Fetch listings and initialize favorite state from server
   Future<List<Listing>> _fetchListingsAndInitFavorites() async {
+    print('[ProductSections] Fetching listings...');
     final listings = await HomeService.fetchListings();
+    print('[ProductSections] Got ${listings.length} listings');
 
-    // Initialize favorites from the listing data (API returns favorite status per listing)
-    final Set<String> favIds = {};
-    for (final listing in listings) {
-      if (listing.favorite) {
-        favIds.add(listing.id);
-      }
-    }
+    // Fetch favorite IDs from server to get accurate state
+    print('[ProductSections] Fetching favorite IDs...');
+    final favoriteIds = await FavoritesService.fetchFavoriteIds();
+    print(
+      '[ProductSections] Got ${favoriteIds.length} favorite IDs: $favoriteIds',
+    );
 
     if (mounted) {
       setState(() {
-        _favoriteIds = favIds;
+        _favoriteIds = favoriteIds;
       });
+      print(
+        '[ProductSections] State updated with ${_favoriteIds.length} favorites',
+      );
     }
 
     return listings;
@@ -46,37 +50,58 @@ class _ProductSectionsState extends State<ProductSections> {
   Future<void> _toggleFavorite(String listingId) async {
     if (_loadingIds.contains(listingId)) return;
 
+    // Optimistically update UI first
+    final wasFavorite = _favoriteIds.contains(listingId);
+
     setState(() {
       _loadingIds.add(listingId);
+      // Optimistically toggle
+      if (wasFavorite) {
+        _favoriteIds.remove(listingId);
+      } else {
+        _favoriteIds.add(listingId);
+      }
     });
 
-    final isFavorite = _favoriteIds.contains(listingId);
-    final result = await FavoritesService.toggleFavorite(listingId, isFavorite);
+    // Call API
+    final result = await FavoritesService.toggleFavorite(
+      listingId,
+      wasFavorite,
+    );
 
     if (mounted) {
       setState(() {
         _loadingIds.remove(listingId);
-        if (result.success) {
-          if (result.isFavorite == true) {
+      });
+
+      // If API call failed, revert the optimistic update
+      if (!result.success) {
+        setState(() {
+          if (wasFavorite) {
             _favoriteIds.add(listingId);
           } else {
             _favoriteIds.remove(listingId);
           }
-        }
-      });
+        });
 
-      // Show toast
-      if (result.success) {
-        if (result.isFavorite == true) {
-          AppToast.showFavoriteAdded(context);
-        } else {
-          AppToast.showFavoriteRemoved(context);
-        }
-      } else {
+        // Show error
         if (result.errorCode == 'NOT_LOGGED_IN') {
           AppToast.showLoginRequired(context);
         } else {
           AppToast.showError(context, result.message);
+        }
+      } else {
+        // Success - ensure state matches API response
+        if (result.isFavorite == true) {
+          setState(() {
+            _favoriteIds.add(listingId);
+          });
+          AppToast.showFavoriteAdded(context);
+        } else if (result.isFavorite == false) {
+          setState(() {
+            _favoriteIds.remove(listingId);
+          });
+          AppToast.showFavoriteRemoved(context);
         }
       }
     }

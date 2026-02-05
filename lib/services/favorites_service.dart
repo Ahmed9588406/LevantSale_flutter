@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/auth/auth_config.dart';
+import '../api/home/home_service.dart';
 
 /// Service for managing favorites (add/remove listings from favorites)
 class FavoritesService {
@@ -159,23 +160,99 @@ class FavoritesService {
     }
   }
 
-  /// Fetch list of user's favorite listing IDs
-  static Future<Set<String>> fetchFavoriteIds() async {
+  /// Check if a specific listing is favorited
+  /// Returns true if favorited, false otherwise
+  static Future<bool> checkFavoriteStatus(String listingId) async {
     try {
       if (!await isLoggedIn()) {
-        return <String>{};
+        return false;
       }
 
-      final url = Uri.parse('$baseUrl/api/v1/favorites');
+      final url = Uri.parse('$baseUrl/api/v1/favorites/$listingId/check');
       final headers = await _headers();
 
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final dynamic data = jsonDecode(response.body);
+        // API might return {isFavorite: true/false} or just true/false
+        if (data is bool) {
+          return data;
+        } else if (data is Map) {
+          return data['isFavorite'] == true || data['favorite'] == true;
+        }
+        return false;
+      }
+      return false;
+    } catch (e) {
+      // Silently fail - not critical
+      return false;
+    }
+  }
+
+  /// Fetch user's favorite listings with pagination
+  static Future<List<Listing>> fetchFavoriteListings({
+    int page = 0,
+    int size = 10,
+  }) async {
+    try {
+      if (!await isLoggedIn()) {
+        return <Listing>[];
+      }
+
+      final url = Uri.parse('$baseUrl/api/v1/favorites?page=$page&size=$size');
+      final headers = await _headers();
+
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dynamic data = jsonDecode(response.body);
+
+        // Handle paginated response
+        final List<dynamic> content = data is Map
+            ? (data['content'] as List? ?? [])
+            : (data as List? ?? []);
+
+        final List<Listing> listings = [];
+        for (final item in content) {
+          if (item is Map<String, dynamic>) {
+            listings.add(Listing.fromJson(item));
+          }
+        }
+        return listings;
+      }
+      return <Listing>[];
+    } catch (e) {
+      // Silently fail - not critical
+      return <Listing>[];
+    }
+  }
+
+  /// Fetch list of user's favorite listing IDs
+  static Future<Set<String>> fetchFavoriteIds() async {
+    try {
+      if (!await isLoggedIn()) {
+        print('[FavoritesService] User not logged in');
+        return <String>{};
+      }
+
+      final url = Uri.parse('$baseUrl/api/v1/favorites');
+      final headers = await _headers();
+
+      print('[FavoritesService] Fetching favorite IDs from: $url');
+      final response = await http.get(url, headers: headers);
+      print('[FavoritesService] Response status: ${response.statusCode}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dynamic data = jsonDecode(response.body);
+        print('[FavoritesService] Response data type: ${data.runtimeType}');
+
+        // Handle both paginated and non-paginated responses
         final List<dynamic> list = data is List
             ? data
-            : (data['data'] ?? data['favorites'] ?? []);
+            : (data['content'] ?? data['data'] ?? data['favorites'] ?? []);
+
+        print('[FavoritesService] Found ${list.length} favorite items');
 
         final Set<String> ids = {};
         for (final item in list) {
@@ -189,11 +266,17 @@ class FavoritesService {
             ids.add(item);
           }
         }
+
+        print(
+          '[FavoritesService] Total favorite IDs: ${ids.length} - IDs: $ids',
+        );
         return ids;
       }
+
+      print('[FavoritesService] Failed with status: ${response.statusCode}');
       return <String>{};
     } catch (e) {
-      print('Error fetching favorites: $e');
+      print('[FavoritesService] Error fetching favorite IDs: $e');
       return <String>{};
     }
   }

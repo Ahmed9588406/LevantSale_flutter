@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'profile_service.dart';
 import 'widgets/profile_ad_card.dart';
+import 'favorites_tab.dart';
 import '../category/product_details_screen.dart';
 import '../verification/verification_status_screen.dart';
 import '../services/session_service.dart';
@@ -23,7 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _fetchProfile();
   }
 
@@ -101,8 +102,10 @@ class _ProfileScreenState extends State<ProfileScreen>
             indicatorColor: const Color(0xFF1DAF52),
             labelColor: const Color(0xFF1DAF52),
             unselectedLabelColor: Colors.grey[600],
+            isScrollable: true,
             tabs: const [
               Tab(text: 'إعلاناتي', icon: Icon(Icons.inventory_2_outlined)),
+              Tab(text: 'المفضلة', icon: Icon(Icons.favorite_border)),
               Tab(
                 text: 'حالة التوثيق',
                 icon: Icon(Icons.verified_user_outlined),
@@ -142,6 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 controller: _tabController,
                 children: [
                   AdsTab(profile: _profile!),
+                  const FavoritesTab(),
                   const VerificationStatusScreen(embedded: true),
                   FeatureRequestsTab(),
                 ],

@@ -31,44 +31,78 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     super.initState();
     if (widget.listingId != null && widget.listingId!.isNotEmpty) {
       _fetchData(widget.listingId!);
+      _checkFavoriteStatus(widget.listingId!);
     }
-    // Favorite state is initialized from the listing's `favorite` field in _fetchData
+  }
+
+  Future<void> _checkFavoriteStatus(String listingId) async {
+    final isFav = await FavoritesService.checkFavoriteStatus(listingId);
+    if (mounted) {
+      setState(() {
+        if (isFav) {
+          _favoriteIds.add(listingId);
+        } else {
+          _favoriteIds.remove(listingId);
+        }
+      });
+    }
   }
 
   Future<void> _toggleFavorite(String listingId) async {
     if (_favoriteLoading) return;
 
+    // Optimistically update UI first
+    final wasFavorite = _favoriteIds.contains(listingId);
+
     setState(() {
       _favoriteLoading = true;
+      // Optimistically toggle
+      if (wasFavorite) {
+        _favoriteIds.remove(listingId);
+      } else {
+        _favoriteIds.add(listingId);
+      }
     });
 
-    final isFavorite = _favoriteIds.contains(listingId);
-    final result = await FavoritesService.toggleFavorite(listingId, isFavorite);
+    // Call API
+    final result = await FavoritesService.toggleFavorite(
+      listingId,
+      wasFavorite,
+    );
 
     if (mounted) {
       setState(() {
         _favoriteLoading = false;
-        if (result.success) {
-          if (result.isFavorite == true) {
+      });
+
+      // If API call failed, revert the optimistic update
+      if (!result.success) {
+        setState(() {
+          if (wasFavorite) {
             _favoriteIds.add(listingId);
           } else {
             _favoriteIds.remove(listingId);
           }
-        }
-      });
+        });
 
-      // Show toast
-      if (result.success) {
-        if (result.isFavorite == true) {
-          AppToast.showFavoriteAdded(context);
-        } else {
-          AppToast.showFavoriteRemoved(context);
-        }
-      } else {
+        // Show error
         if (result.errorCode == 'NOT_LOGGED_IN') {
           AppToast.showLoginRequired(context);
         } else {
           AppToast.showError(context, result.message);
+        }
+      } else {
+        // Success - ensure state matches API response
+        if (result.isFavorite == true) {
+          setState(() {
+            _favoriteIds.add(listingId);
+          });
+          AppToast.showFavoriteAdded(context);
+        } else if (result.isFavorite == false) {
+          setState(() {
+            _favoriteIds.remove(listingId);
+          });
+          AppToast.showFavoriteRemoved(context);
         }
       }
     }
@@ -80,28 +114,34 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       _error = null;
     });
     try {
+      print('[ProductDetails] Fetching listing $id...');
       final l = await HomeService.fetchListingById(id);
+      print('[ProductDetails] Got listing: ${l.title}');
+
       final related = await HomeService.fetchSimilarListings(
         categoryId: l.categoryId,
         excludeId: id,
         limit: 5,
       );
+      print('[ProductDetails] Got ${related.length} related listings');
+
+      // Fetch all favorite IDs from server
+      print('[ProductDetails] Fetching favorite IDs...');
+      final favoriteIds = await FavoritesService.fetchFavoriteIds();
+      print(
+        '[ProductDetails] Got ${favoriteIds.length} favorite IDs: $favoriteIds',
+      );
+
       setState(() {
         _listing = l;
         _related = related;
-
-        // Initialize favorite state from API response
-        if (l.favorite) {
-          _favoriteIds.add(l.id);
-        }
-        // Also add favorites from related listings
-        for (final r in related) {
-          if (r.favorite) {
-            _favoriteIds.add(r.id);
-          }
-        }
+        _favoriteIds = favoriteIds;
       });
+      print(
+        '[ProductDetails] State updated. Is $id favorited? ${_favoriteIds.contains(id)}',
+      );
     } catch (e) {
+      print('[ProductDetails] Error: $e');
       setState(() {
         _error = 'فشل تحميل البيانات';
       });

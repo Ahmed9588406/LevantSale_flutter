@@ -1,32 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../models/statistics_model.dart';
 
 class StatisticsSection extends StatelessWidget {
   final StatisticsModel statistics;
 
   const StatisticsSection({super.key, required this.statistics});
-
-  // Helper to load SVG with a fallback icon if loading fails.
-  static Widget _svgIcon(
-    String assetPath, {
-    required Color color,
-    double width = 26,
-    double height = 26,
-    IconData fallback = Icons.image_outlined,
-  }) {
-    return SvgPicture.asset(
-      assetPath,
-      width: width,
-      height: height,
-      fit: BoxFit.contain,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-      // Show a simple Icon if the SVG can't be rendered
-      placeholderBuilder: (context) =>
-          Icon(fallback, size: width, color: color),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,27 +34,17 @@ class StatisticsSection extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _StatCard(
-                    icon: _svgIcon(
-                      'icons/view.svg',
-                      color: const Color(0xFF4A9B8E),
-                      width: 28,
-                      height: 28,
-                      fallback: Icons.visibility_outlined,
-                    ),
+                    iconPath: 'assets/icons/view.svg',
+                    fallbackIcon: Icons.visibility_outlined,
                     title: 'المشاهدات',
                     value: statistics.totalViews.toStringAsFixed(2),
                   ),
                   const SizedBox(width: 12),
                   _StatCard(
-                    icon: _svgIcon(
-                      'icons/allads.svg',
-                      color: const Color(0xFF4A9B8E),
-                      width: 28,
-                      height: 28,
-                      fallback: Icons.list_alt,
-                    ),
+                    iconPath: 'assets/icons/view.svg',
+                    fallbackIcon: Icons.list_alt_rounded,
                     title: 'كل الإعلانات',
-                    value: statistics.totalAds.toString() + '.00',
+                    value: '${statistics.totalAds}.00',
                   ),
                 ],
               ),
@@ -83,27 +54,17 @@ class StatisticsSection extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _StatCard(
-                    icon: _svgIcon(
-                      'icons/person.svg',
-                      color: const Color(0xFF4A9B8E),
-                      width: 28,
-                      height: 28,
-                      fallback: Icons.person_outline,
-                    ),
+                    iconPath: 'assets/icons/person.svg',
+                    fallbackIcon: Icons.people_outline_rounded,
                     title: 'العملاء المحتملين',
-                    value: statistics.potentialCustomers.toString() + '.00',
+                    value: '${statistics.potentialCustomers}.00',
                   ),
                   const SizedBox(width: 12),
                   _StatCard(
-                    icon: _svgIcon(
-                      'icons/star.svg',
-                      color: const Color(0xFF4A9B8E),
-                      width: 28,
-                      height: 28,
-                      fallback: Icons.star_outline,
-                    ),
+                    iconPath: 'assets/icons/star.svg',
+                    fallbackIcon: Icons.star_outline_rounded,
                     title: 'الإعلانات المميزة',
-                    value: statistics.featuredAds.toString() + '.00',
+                    value: '${statistics.featuredAds}.00',
                   ),
                 ],
               ),
@@ -115,18 +76,18 @@ class StatisticsSection extends StatelessWidget {
   }
 }
 
-// Small local card that reliably loads and colors SVG icons (with fallback)
 class _StatCard extends StatelessWidget {
-  final Widget icon;
+  final String? iconPath;
+  final IconData? fallbackIcon;
   final String title;
   final String value;
 
   const _StatCard({
-    Key? key,
-    required this.icon,
+    this.iconPath,
+    this.fallbackIcon,
     required this.title,
     required this.value,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -139,17 +100,43 @@ class _StatCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border(
             bottom: BorderSide(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
         ),
         child: Row(
           children: [
-            SizedBox(
+            Container(
               width: 28,
               height: 28,
-              child: icon,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A9B8E).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Center(
+                child: iconPath != null
+                    ? SvgPicture.asset(
+                        iconPath!,
+                        width: 18,
+                        height: 18,
+                        fit: BoxFit.contain,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF4A9B8E),
+                          BlendMode.srcIn,
+                        ),
+                        placeholderBuilder: (context) => Icon(
+                          fallbackIcon ?? Icons.image_outlined,
+                          size: 18,
+                          color: const Color(0xFF4A9B8E),
+                        ),
+                      )
+                    : Icon(
+                        fallbackIcon ?? Icons.image_outlined,
+                        size: 18,
+                        color: const Color(0xFF4A9B8E),
+                      ),
+              ),
             ),
             const SizedBox(width: 6),
             Expanded(

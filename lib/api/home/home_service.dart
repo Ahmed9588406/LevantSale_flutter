@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/auth_config.dart';
+import '../../home/models/banner_model.dart';
 
 class ApiCategory {
   final String id;
@@ -274,6 +275,20 @@ class HomeService {
           .toList();
     } else {
       throw Exception('Failed to fetch similar listings (${res.statusCode})');
+    }
+  }
+
+  static Future<List<BannerModel>> fetchBanners() async {
+    final url = Uri.parse('$baseUrl/api/v1/banners');
+    final h = await _headers();
+    final res = await http.get(url, headers: h);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final List<dynamic> data = jsonDecode(res.body) as List<dynamic>;
+      return data
+          .map((e) => BannerModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } else {
+      throw Exception('Failed to fetch banners (${res.statusCode})');
     }
   }
 }
