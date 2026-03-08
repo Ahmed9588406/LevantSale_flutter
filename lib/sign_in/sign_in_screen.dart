@@ -2,15 +2,72 @@ import 'package:flutter/material.dart';
 import 'phone_login_screen.dart';
 import 'email_signup_screen.dart';
 import 'email_login_screen.dart';
+import '../api/auth/google_auth_service.dart';
+import '../home/home_screen.dart';
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({Key? key}) : super(key: key);
+  const SignInScreen({super.key});
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
 class _SignInScreenState extends State<SignInScreen> {
+  bool _isGoogleLoading = false;
+
+  /// Handle Google Sign-In button tap
+  Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleLoading) return;
+
+    setState(() {
+      _isGoogleLoading = true;
+    });
+
+    try {
+      final result = await GoogleAuthService.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('مرحباً ${result['name'] ?? ''}!'),
+            backgroundColor: const Color(0xFF1DAF52),
+          ),
+        );
+
+        // Navigate to home screen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      } else if (result['cancelled'] == true) {
+        // User cancelled - do nothing
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'فشل تسجيل الدخول بجوجل'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
+    }
+  }
+
   Widget _authButton({
     required String label,
     required Widget icon,
@@ -95,6 +152,36 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
+  Widget _buildGoogleIcon() {
+    return Image.asset(
+      'icons/google ( 1).png',
+      width: 24,
+      height: 24,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback if image fails to load
+        return Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: const Center(
+            child: Text(
+              'G',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4285F4),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -116,15 +203,18 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
               ),
             ),
-            
+
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 40,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
-                    
+
                     // Title
                     const Text(
                       'تسجيل الدخول',
@@ -134,9 +224,9 @@ class _SignInScreenState extends State<SignInScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    
+
                     const SizedBox(height: 60),
-                    
+
                     // Phone button
                     _authButton(
                       label: 'تسجيل الدخول باستخدام رقم هاتف',
@@ -162,9 +252,9 @@ class _SignInScreenState extends State<SignInScreen> {
                         );
                       },
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Email button
                     _authButton(
                       label: 'تسجيل الدخول باستخدام البريد الإلكتروني',
@@ -190,9 +280,9 @@ class _SignInScreenState extends State<SignInScreen> {
                         );
                       },
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // OR separator
                     Row(
                       children: [
@@ -221,62 +311,45 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Google button
-                    _socialButton(
-                      label: 'تسجيل الدخول باستخدام جوجل',
-                      icon: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'G',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF4285F4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      onTap: () {},
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Facebook button
-                    _socialButton(
-                      label: 'سجل الدخول بحساب فيسبوك',
-                      icon: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF1877F2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'f',
-                            style: TextStyle(
+                    _isGoogleLoading
+                        ? Container(
+                            height: 56,
+                            decoration: BoxDecoration(
                               color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'serif',
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(
+                                color: const Color(0xFFE5E5E5),
+                                width: 1,
+                              ),
                             ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF4285F4),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : _socialButton(
+                            label: 'تسجيل الدخول باستخدام جوجل',
+                            icon: _buildGoogleIcon(),
+                            onTap: _handleGoogleSignIn,
                           ),
-                        ),
-                      ),
-                      onTap: () {},
-                    ),
-                    
+
+                    const SizedBox(height: 16),
+
+                    // Facebook button
                     const SizedBox(height: 60),
-                    
+
                     // Sign up text
                     GestureDetector(
                       onTap: () {
@@ -295,18 +368,12 @@ class _SignInScreenState extends State<SignInScreen> {
                             color: Color(0xFFC47F08),
                           ),
                           children: [
+                            TextSpan(text: 'ليس لديك حساب في '),
                             TextSpan(
-                              text: 'ليس لديك حساب في ',
+                              text: 'levantsale',
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
-                            TextSpan(
-                              text: 'leventsale',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            TextSpan(
-                              text: ' قم بتسجيل الدخول الآن',
-                            ),
+                            TextSpan(text: ' قم بتسجيل الدخول الآن'),
                           ],
                         ),
                       ),

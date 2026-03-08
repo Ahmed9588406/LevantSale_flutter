@@ -3,6 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:io';
 import 'image_picker_helper.dart';
 import 'success_dialog.dart';
+import 'verification_draft.dart';
+import '../profile/profile_service.dart';
+import 'verification_service.dart';
 
 class VerificationStepThreeScreen extends StatefulWidget {
   const VerificationStepThreeScreen({Key? key}) : super(key: key);
@@ -15,6 +18,8 @@ class VerificationStepThreeScreen extends StatefulWidget {
 class _VerificationStepThreeScreenState
     extends State<VerificationStepThreeScreen> {
   File? _profileImage;
+  String? _phoneNumber;
+  bool _submitting = false;
 
   Future<void> _pickImage() async {
     final image = await ImagePickerHelper.showImageSourceDialog(context);
@@ -23,7 +28,9 @@ class _VerificationStepThreeScreenState
         _profileImage = image;
         print('Profile image selected: ${image.path}');
       });
-      
+      // persist to draft
+      VerificationDraft.instance.facePhoto = image;
+
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -33,6 +40,61 @@ class _VerificationStepThreeScreenState
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _submit() async {
+    final draft = VerificationDraft.instance;
+    if (_profileImage == null ||
+        draft.nationalIdFront == null ||
+        draft.nationalIdBack == null ||
+        (draft.fullName == null || draft.fullName!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'يرجى إكمال جميع الخطوات (الاسم، صور البطاقة، وصورة الوجه)',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      String phone = _phoneNumber ?? '';
+      if (phone.isEmpty) {
+        final prof = await ProfileService.fetchProfile();
+        phone = (prof?['phone'] ?? prof?['phoneNumber'] ?? '').toString();
+      }
+      final ok = await VerificationService.submitVerification(
+        fullName: draft.fullName ?? '',
+        aboutYou: draft.aboutYou ?? '',
+        gender: draft.gender,
+        phoneNumber: phone,
+        nationalIdFront: draft.nationalIdFront!,
+        nationalIdBack: draft.nationalIdBack!,
+        facePhoto: _profileImage!,
+      );
+      if (!mounted) return;
+      if (ok) {
+        SuccessDialog.show(
+          context: context,
+          title: 'تم رفع بياناتك بنجاح!',
+          message: 'سيتم مراجعة البيانات بعد الإرسال',
+          onClose: () {
+            Navigator.popUntil(context, (route) => route.isFirst);
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('فشل إرسال طلب التوثيق'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -169,13 +231,13 @@ class _VerificationStepThreeScreenState
                               width: 240,
                               height: 200,
                               decoration: BoxDecoration(
-                                color: _profileImage != null 
-                                    ? Colors.black12 
+                                color: _profileImage != null
+                                    ? Colors.black12
                                     : const Color(0xFFF5F5F5),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: _profileImage != null 
-                                      ? const Color(0xFF1DAF52) 
+                                  color: _profileImage != null
+                                      ? const Color(0xFF1DAF52)
                                       : const Color(0xFFE0E0E0),
                                   width: _profileImage != null ? 2 : 1.5,
                                   style: BorderStyle.solid,
@@ -197,11 +259,12 @@ class _VerificationStepThreeScreenState
                                               BlendMode.srcIn,
                                             ),
                                             fit: BoxFit.contain,
-                                            placeholderBuilder: (context) => const Icon(
-                                              Icons.camera_alt_outlined,
-                                              size: 64,
-                                              color: Color(0x809E9E9E),
-                                            ),
+                                            placeholderBuilder: (context) =>
+                                                const Icon(
+                                                  Icons.camera_alt_outlined,
+                                                  size: 64,
+                                                  color: Color(0x809E9E9E),
+                                                ),
                                           ),
                                           const SizedBox(height: 8),
                                         ],
@@ -214,27 +277,32 @@ class _VerificationStepThreeScreenState
                                             fit: BoxFit.cover,
                                             width: double.infinity,
                                             height: double.infinity,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              print('Error loading image: $error');
-                                              return Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: const [
-                                                  Icon(
-                                                    Icons.error_outline,
-                                                    size: 48,
-                                                    color: Colors.red,
-                                                  ),
-                                                  SizedBox(height: 8),
-                                                  Text(
-                                                    'فشل تحميل الصورة',
-                                                    style: TextStyle(
-                                                      color: Colors.red,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              );
-                                            },
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                                  print(
+                                                    'Error loading image: $error',
+                                                  );
+                                                  return Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: const [
+                                                      Icon(
+                                                        Icons.error_outline,
+                                                        size: 48,
+                                                        color: Colors.red,
+                                                      ),
+                                                      SizedBox(height: 8),
+                                                      Text(
+                                                        'فشل تحميل الصورة',
+                                                        style: TextStyle(
+                                                          color: Colors.red,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
                                           ),
                                           // Edit overlay
                                           Positioned(
@@ -243,7 +311,9 @@ class _VerificationStepThreeScreenState
                                             child: Container(
                                               padding: const EdgeInsets.all(6),
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withOpacity(0.5),
+                                                color: Colors.black.withOpacity(
+                                                  0.5,
+                                                ),
                                                 shape: BoxShape.circle,
                                               ),
                                               child: const Icon(
@@ -267,27 +337,7 @@ class _VerificationStepThreeScreenState
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: () {
-                              if (_profileImage != null) {
-                                // Show success dialog
-                                SuccessDialog.show(
-                                  context: context,
-                                  title: 'تم رفع بياناتك بنجاح!',
-                                  message: 'سيتم مراجعة البيانات بعد الإرسال',
-                                  onClose: () {
-                                    Navigator.popUntil(
-                                        context, (route) => route.isFirst);
-                                  },
-                                );
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('يرجى رفع صورة شخصية'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
+                            onPressed: _submitting ? null : _submit,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1DAF52),
                               shape: RoundedRectangleBorder(
@@ -295,14 +345,23 @@ class _VerificationStepThreeScreenState
                               ),
                               elevation: 0,
                             ),
-                            child: const Text(
-                              'إرسال البيانات',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: _submitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'إرسال البيانات',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
 

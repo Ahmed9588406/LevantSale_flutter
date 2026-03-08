@@ -8,6 +8,7 @@ class AdModel {
   final int potentialCustomers;
   final AdStatus status;
   final String? statusLabel;
+  final bool? isFeatured;
 
   AdModel({
     required this.id,
@@ -19,11 +20,8 @@ class AdModel {
     required this.potentialCustomers,
     required this.status,
     this.statusLabel,
+    this.isFeatured,
   });
 }
 
-enum AdStatus {
-  active,
-  pending,
-  waitingForApproval,
-}
+enum AdStatus { active, pending, waitingForApproval }

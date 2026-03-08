@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_config.dart';
+import '../../notifications/notifications_service.dart';
 
 class AuthService {
   /// Login with email and password
@@ -25,7 +26,19 @@ class AuthService {
             onTimeout: () => throw TimeoutException('Request timeout'),
           );
 
-      return _handleResponse(response);
+      final result = _handleResponse(response);
+
+      // If login successful, register FCM token
+      if (result['success'] == true) {
+        try {
+          await NotificationsService.sendFcmTokenToBackend();
+        } catch (e) {
+          print('Warning: Failed to register FCM token: $e');
+          // Don't fail the login if FCM registration fails
+        }
+      }
+
+      return result;
     } on TimeoutException {
       return {
         'success': false,
@@ -58,7 +71,19 @@ class AuthService {
             onTimeout: () => throw TimeoutException('Request timeout'),
           );
 
-      return _handleResponse(response);
+      final result = _handleResponse(response);
+
+      // If login successful, register FCM token
+      if (result['success'] == true) {
+        try {
+          await NotificationsService.sendFcmTokenToBackend();
+        } catch (e) {
+          print('Warning: Failed to register FCM token: $e');
+          // Don't fail the login if FCM registration fails
+        }
+      }
+
+      return result;
     } on TimeoutException {
       return {
         'success': false,
@@ -303,7 +328,11 @@ class AuthService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       try {
         final data = jsonDecode(response.body);
-        return {'success': true, 'data': data, 'message': 'Operation successful'};
+        return {
+          'success': true,
+          'data': data,
+          'message': 'Operation successful',
+        };
       } catch (e) {
         // Handle plain text response
         return {
