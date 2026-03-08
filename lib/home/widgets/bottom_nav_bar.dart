@@ -1,60 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../verification/verification_step_one_screen.dart';
 import '../../myAds/my_ads_screen.dart';
-import '../../createAdd/step1.dart';
+import '../../createAdd/create_ad_screen.dart';
 import '../../messages/messages_list_screen.dart';
+import '../../profile/profile_screen.dart';
+import '../../verification/verification_status_screen.dart';
+import '../../verification/verification_step_one_screen.dart';
+import '../../profile/profile_service.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
   const CustomBottomNavBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
-
-  // Context-aware SVG loader: check asset existence and show fallback icon if missing.
-  static Future<bool> _assetExists(BuildContext context, String assetPath) async {
-    try {
-      await DefaultAssetBundle.of(context).load(assetPath);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static Widget _svgIcon(
-    BuildContext context,
-    String assetPath, {
-    required Color color,
-    double width = 26,
-    double height = 26,
-    IconData fallback = Icons.image_outlined,
-  }) {
-    // Use FutureBuilder to avoid throwing when asset file is missing.
-    return FutureBuilder<bool>(
-      future: _assetExists(context, assetPath),
-      builder: (ctx, snapshot) {
-        final icon = Icon(fallback, size: width, color: color);
-        if (snapshot.connectionState != ConnectionState.done) {
-          return SizedBox(width: width, height: height, child: Center(child: icon));
-        }
-        if (snapshot.hasData && snapshot.data == true) {
-          return SvgPicture.asset(
-            assetPath,
-            width: width,
-            height: height,
-            fit: BoxFit.contain,
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            placeholderBuilder: (context) => icon,
-          );
-        }
-        return icon;
-      },
-    );
-  }
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -79,138 +41,118 @@ class CustomBottomNavBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(child: _buildNavItem(
-                icon: const Icon(Icons.person_outline),
-                label: 'توثيق',
-                index: 4,
-                onCustomTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const VerificationStepOneScreen(),
+              Flexible(
+                child: _buildNavItemWithMenu(
+                  icon: const Icon(Icons.person_outline),
+                  label: 'حسابي',
+                  index: 4,
+                  onMainTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  },
+                  menuItems: [
+                    _MenuItem(
+                      icon: Icons.verified_user_outlined,
+                      label: 'توثيق',
+                      onTap: () async {
+                        final status = await ProfileService.fetchVerificationStatus();
+                        if (!context.mounted) return;
+                        if (status == null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const VerificationStepOneScreen(),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const VerificationStatusScreen(),
+                            ),
+                          );
+                        }
+                      },
                     ),
-                  );
-                },
-              )),
-              Flexible(child: _buildNavItem(
-                icon: const Icon(Icons.view_headline),
-                label: 'إعلاناتي',
-                index: 3,
-                onCustomTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyAdsScreen(),
-                    ),
-                  );
-                },
-              )),
-              const SizedBox(width: 60), // Space for center FAB
-              Flexible(child: _buildNavItem(
-                icon: _svgIcon(
-                  context,
-                  'icons/message.svg',
-                  color: currentIndex == 1
-                      ? const Color(0xFF1DAF52)
-                      : const Color(0xFF9E9E9E),
-                  width: 22,
-                  height: 22,
-                  fallback: Icons.chat_bubble_outline,
+                  ],
                 ),
-                label: 'رسائل',
-                index: 1,
-                onCustomTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MessagesListScreen(),
-                    ),
-                  );
-                },
-              )),
-              Flexible(child: _buildNavItem(
-                icon: _svgIcon(
-                  context,
-                  'icons/home.svg',
-                  color: currentIndex == 0
-                      ? const Color(0xFF1DAF52)
-                      : const Color(0xFF9E9E9E),
-                  width: 22,
-                  height: 22,
-                  fallback: Icons.home_outlined,
+              ),
+              Flexible(
+                child: _buildNavItem(
+                  context: context,
+                  icon: const Icon(Icons.view_headline),
+                  label: 'إعلاناتي',
+                  index: 3,
+                  onCustomTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyAdsScreen(),
+                      ),
+                    );
+                  },
                 ),
-                label: 'الرئيسية',
-                index: 0,
-              )),
+              ),
+              const SizedBox(width: 70), // Space for center FAB
+              Flexible(
+                child: _buildNavItem(
+                  context: context,
+                  iconPath: 'icons/message.svg',
+                  fallbackIcon: Icons.chat_bubble_outline,
+                  label: 'رسائل',
+                  index: 1,
+                  onCustomTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MessagesListScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Flexible(
+                child: _buildNavItem(
+                  context: context,
+                  iconPath: 'icons/home.svg',
+                  fallbackIcon: Icons.home_outlined,
+                  label: 'الرئيسية',
+                  index: 0,
+                ),
+              ),
             ],
           ),
 
-          // Centered Floating Action Button with Glow
+          // Centered Add Button
           Positioned(
-            top: -28,
+            top: -35,
             child: GestureDetector(
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const CarSellForm()),
+                  MaterialPageRoute(
+                    builder: (context) => const CreateAdScreen(),
+                  ),
                 );
               },
-              child: Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    // Outer glow - lightest
-                    BoxShadow(
-                      color: const Color(0xFF1DAF52).withOpacity(0.15),
-                      blurRadius: 30,
-                      spreadRadius: 10,
-                    ),
-                    // Middle glow
-                    BoxShadow(
-                      color: const Color(0xFF1DAF52).withOpacity(0.25),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    ),
-                    // Inner glow - strongest
-                    BoxShadow(
-                      color: const Color(0xFF1DAF52).withOpacity(0.4),
-                      blurRadius: 10,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF5FB57C), Color(0xFF1DAF52)],
-                    ),
-                    shape: BoxShape.circle,
+              child: SizedBox(
+                width: 100,
+                height: 100,
+                child: SvgPicture.asset(
+                  'icons/add.svg',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.contain,
+                  placeholderBuilder: (context) => const Icon(
+                    Icons.add_circle,
+                    size: 100,
+                    color: Color(0xFF1DAF52),
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 34),
                 ),
-              ),
-            ),
-          ),
-
-          // Icon below FAB (uses icons/add.svg)
-          Positioned(
-            bottom: 6,
-            child: SizedBox(
-              width: 30,
-              height: 30,
-              child: _svgIcon(
-                context,
-                'icons/add.svg',
-                color: currentIndex == 2
-                    ? const Color(0xFF1DAF52)
-                    : const Color(0xFF757575),
-                width: 30,
-                height: 30,
-                fallback: Icons.add,
               ),
             ),
           ),
@@ -219,76 +161,163 @@ class CustomBottomNavBar extends StatelessWidget {
     );
   }
 
+  Widget _buildNavItemWithMenu({
+    Widget? icon,
+    String? iconPath,
+    IconData? fallbackIcon,
+    required String label,
+    required int index,
+    required VoidCallback onMainTap,
+    required List<_MenuItem> menuItems,
+  }) {
+    final isSelected = currentIndex == index;
+    final color = isSelected ? const Color(0xFF1DAF52) : const Color(0xFF9E9E9E);
+
+    return Builder(
+      builder: (itemContext) {
+        return InkWell(
+          onTap: () async {
+            final RenderBox button = itemContext.findRenderObject() as RenderBox;
+            final RenderBox overlay = Overlay.of(itemContext).context.findRenderObject() as RenderBox;
+            final Offset positionOffset = button.localToGlobal(Offset.zero, ancestor: overlay);
+
+            // FIX: We increase the 'bottom' value to ensure the menu anchor is ABOVE the bar
+            // and the top of the menu is allowed to grow towards the top of the screen.
+            final RelativeRect position = RelativeRect.fromLTRB(
+              positionOffset.dx, 
+              positionOffset.dy - 110, // Approximate height of the menu upward
+              overlay.size.width - positionOffset.dx - button.size.width,
+              overlay.size.height - positionOffset.dy + 10, // Forces the menu UP
+            );
+
+            final int? selectedValue = await showMenu<int>(
+              context: itemContext,
+              position: position,
+              elevation: 8,
+              useRootNavigator: true, // Crucial so it isn't clipped by the nav bar container
+              constraints: const BoxConstraints(minWidth: 150),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              items: [
+                PopupMenuItem<int>(
+                  value: -1,
+                  child: Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_outline, color: Color(0xFF1DAF52)),
+                        const SizedBox(width: 12),
+                        const Text('حسابي', style: TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+                ...menuItems.asMap().entries.map((entry) {
+                  return PopupMenuItem<int>(
+                    value: entry.key,
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Row(
+                        children: [
+                          Icon(entry.value.icon, color: Colors.grey[600], size: 22),
+                          const SizedBox(width: 12),
+                          Text(entry.value.label, style: const TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            );
+
+            if (selectedValue == -1) {
+              onMainTap();
+            } else if (selectedValue != null) {
+              menuItems[selectedValue].onTap();
+            }
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconTheme(
+                    data: IconThemeData(color: color, size: 24),
+                    child: icon ?? (iconPath != null 
+                        ? SvgPicture.asset(iconPath, colorFilter: ColorFilter.mode(color, BlendMode.srcIn)) 
+                        : Icon(fallbackIcon ?? Icons.image_outlined)),
+                  ),
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Icon(Icons.arrow_drop_up, size: 18, color: color),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
   Widget _buildNavItem({
-    required Widget icon,
+    required BuildContext context,
+    Widget? icon,
+    String? iconPath,
+    IconData? fallbackIcon,
     required String label,
     required int index,
     VoidCallback? onCustomTap,
   }) {
     final isSelected = currentIndex == index;
+    final color = isSelected ? const Color(0xFF1DAF52) : const Color(0xFF9E9E9E);
 
     return InkWell(
       onTap: onCustomTap ?? () => onTap(index),
       borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Use IconTheme so both Icon widgets and SvgPicture respect size/color
-            IconTheme(
-              data: IconThemeData(
-                color: isSelected
-                    ? const Color(0xFF1DAF52)
-                    : const Color(0xFF9E9E9E),
-                size: 22,
-              ),
-              child: icon,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconTheme(
+            data: IconThemeData(color: color, size: 24),
+            child: icon ?? (iconPath != null 
+                ? SvgPicture.asset(iconPath, colorFilter: ColorFilter.mode(color, BlendMode.srcIn)) 
+                : Icon(fallbackIcon ?? Icons.image_outlined)),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? const Color(0xFF1DAF52)
-                    : const Color(0xFF757575),
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// Example usage in a Scaffold:
-class ExampleScreen extends StatefulWidget {
-  const ExampleScreen({Key? key}) : super(key: key);
+class _MenuItem {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
-  @override
-  State<ExampleScreen> createState() => _ExampleScreenState();
-}
-
-class _ExampleScreenState extends State<ExampleScreen> {
-  int _currentIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(child: Text('Current Index: $_currentIndex')),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-      ),
-    );
-  }
+  _MenuItem({required this.icon, required this.label, required this.onTap});
 }

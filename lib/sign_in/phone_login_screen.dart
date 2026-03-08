@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../home/home_screen.dart';
 import '../api/auth/auth_service.dart';
+import '../services/session_service.dart';
 
 class PhoneLoginScreen extends StatefulWidget {
   const PhoneLoginScreen({Key? key}) : super(key: key);
@@ -16,6 +18,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _rememberMe = true; // Remember me state
 
   @override
   void dispose() {
@@ -52,6 +55,25 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       if (!mounted) return;
 
       if (result['success']) {
+        try {
+          final data = result['data'] as Map<String, dynamic>?;
+          final token = data?['token']?.toString() ?? '';
+          final userName = data?['name']?.toString();
+          final userEmail = data?['email']?.toString();
+          final userId = data?['id']?.toString();
+
+          // Save session for auto-login (using phone as email for phone login)
+          await SessionService.saveSession(
+            email:
+                userEmail ?? phone, // Use email if available, otherwise phone
+            password: password,
+            token: token,
+            userName: userName,
+            userPhone: phone,
+            userId: userId,
+            rememberMe: _rememberMe,
+          );
+        } catch (_) {}
         // Show success toast
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -350,7 +372,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                               children: [
                                 TextSpan(text: 'عضو جديد في '),
                                 TextSpan(
-                                  text: 'leventsale',
+                                  text: 'levantsale',
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                                 TextSpan(text: ' قم بتسجيل الدخول الآن'),

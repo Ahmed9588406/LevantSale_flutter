@@ -82,7 +82,7 @@ Profile image selected: /path/to/image.jpg
 If images still don't appear, use the debug test screen:
 
 ```dart
-import 'package:leventsale/verification/debug_image_test.dart';
+import 'package:levantsale/verification/debug_image_test.dart';
 
 // Navigate to debug screen
 Navigator.push(

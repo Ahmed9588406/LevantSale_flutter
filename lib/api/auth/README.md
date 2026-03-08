@@ -26,7 +26,7 @@ Data models for authentication.
 ### Login with Email
 
 ```dart
-import 'package:leventsale/api/auth/auth_service.dart';
+import 'package:levantsale/api/auth/auth_service.dart';
 
 // Call the login method
 final result = await AuthService.loginWithEmail(
@@ -46,7 +46,7 @@ if (result['success']) {
 ### Login with Phone
 
 ```dart
-import 'package:leventsale/api/auth/auth_service.dart';
+import 'package:levantsale/api/auth/auth_service.dart';
 
 // Call the login method
 final result = await AuthService.loginWithPhone(
@@ -145,7 +145,7 @@ All errors are returned in a consistent format with a success flag and message.
 ### Register New User
 
 ```dart
-import 'package:leventsale/api/auth/auth_service.dart';
+import 'package:levantsale/api/auth/auth_service.dart';
 
 // Call the register method
 final result = await AuthService.register(
